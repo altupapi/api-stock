@@ -8,6 +8,37 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// ENDPOINT: Inicio de sesión dinámico desde Base de Datos (Tipo Google)
+app.post('/api/login', (req, res) => {
+    const { usuario, password } = req.body;
+
+    // Validación básica por si mandan datos vacíos
+    if (!usuario || !password) {
+        return res.status(400).json({ error: "Por favor, ingresa usuario y contraseña" });
+    }
+
+    // Consulta SQL real para buscar las credenciales y obtener el rol
+    const query = 'SELECT id, usuario, rol FROM usuarios WHERE usuario = ? AND password = ?';
+
+    db.query(query, [usuario, password], (err, result) => {
+        if (err) {
+            console.error("Error en la consulta de login:", err);
+            return res.status(500).json({ error: "Error interno del servidor" });
+        }
+
+        // Si encontramos una coincidencia en la base de datos
+        if (result.length > 0) {
+            res.status(200).json({ 
+                mensaje: "Login exitoso", 
+                usuario: result[0].usuario,
+                rol: result[0].rol 
+            });
+        } else {
+            // Credenciales incorrectas
+            res.status(401).json({ mensaje: "Usuario o contraseña incorrectos" });
+        }
+    });
+});
 app.use(express.json());
 
 // 🔌 Configuración con tus credenciales reales de Clever Cloud
