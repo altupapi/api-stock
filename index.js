@@ -8,34 +8,34 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-// ENDPOINT: Inicio de sesión dinámico desde Base de Datos (Tipo Google)
 app.post('/api/login', (req, res) => {
+    // Agregamos un log para ver en los servidores de Render qué está enviando Android
+    console.log("Datos recibidos en Login:", req.body);
+    
     const { usuario, password } = req.body;
 
-    // Validación básica por si mandan datos vacíos
     if (!usuario || !password) {
-        return res.status(400).json({ error: "Por favor, ingresa usuario y contraseña" });
+        return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
-    // Consulta SQL real para buscar las credenciales y obtener el rol
+    // Usamos 'usuarios' todo en minúsculas tal como se creó en phpMyAdmin
     const query = 'SELECT id, usuario, rol FROM usuarios WHERE usuario = ? AND password = ?';
 
     db.query(query, [usuario, password], (err, result) => {
         if (err) {
-            console.error("Error en la consulta de login:", err);
-            return res.status(500).json({ error: "Error interno del servidor" });
+            // 🚨 ESTO ES CLAVE: Si hay un error de MySQL, se imprimirá en los logs de Render
+            console.error("ERROR CRÍTICO EN MYSQL:", err);
+            return res.status(500).json({ error: "Error interno del servidor en la consulta SQL", detalle: err.message });
         }
 
-        // Si encontramos una coincidencia en la base de datos
         if (result.length > 0) {
-            res.status(200).json({ 
+            return res.status(200).json({ 
                 mensaje: "Login exitoso", 
                 usuario: result[0].usuario,
                 rol: result[0].rol 
             });
         } else {
-            // Credenciales incorrectas
-            res.status(401).json({ mensaje: "Usuario o contraseña incorrectos" });
+            return res.status(401).json({ mensaje: "Usuario o contraseña incorrectos" });
         }
     });
 });
