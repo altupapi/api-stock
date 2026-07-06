@@ -444,8 +444,9 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
     });
 });
 
-// =========================================================================
+// Definimos el puerto dinámico de Render o el 3000 para local
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SERVIDOR HABILITADO CORRECTAMENTE EN PUERTO ${PORT}`);
+
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo exitosamente en el puerto ${PORT}`);
 });
