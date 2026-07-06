@@ -355,7 +355,7 @@ app.post('/api/ventas', (req, res) => {
     });
 });
 // =========================================================================
-// 🚀 INYECTOR MASIVO HÍBRIDO Y BLINDADO (RESUELVE NOMBRES Y COLUMNAS)
+// 🚀 INYECTOR MASIVO TOTALMENTE CÓDIGOS DE BARRA (RESUELVE NOMBRES Y COLUMNAS)
 // =========================================================================
 app.get('/api/admin/cargar-agropets', (req, res) => {
     
@@ -363,10 +363,10 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
     db.query("DROP TABLE IF EXISTS productos;", (errDrop1) => {
         db.query("DROP TABLE IF EXISTS producto;", (errDrop2) => {
             
-            // 2. Creamos la tabla 'productos' (plural) con columnas híbridas
+            // 2. Creamos la tabla 'productos' (plural) usando BIGINT para soportar códigos de barra largos
             const sqlTablaPlural = `
                 CREATE TABLE productos (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id BIGINT PRIMARY KEY,
                     nombre VARCHAR(255) NOT NULL,
                     cantidad INT NOT NULL DEFAULT 0,
                     stock INT NOT NULL DEFAULT 0,
@@ -379,10 +379,10 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
             db.query(sqlTablaPlural, (errPlural) => {
                 if (errPlural) return res.status(500).send("Error creando tabla plural: " + errPlural.message);
 
-                // 3. Creamos la tabla 'producto' (singular) con la misma estructura por si acaso
+                // 3. Creamos la tabla 'producto' (singular) con la misma estructura idéntica
                 const sqlTablaSingular = `
                     CREATE TABLE producto (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        id BIGINT PRIMARY KEY,
                         nombre VARCHAR(255) NOT NULL,
                         cantidad INT NOT NULL DEFAULT 0,
                         stock INT NOT NULL DEFAULT 0,
@@ -395,124 +395,127 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
                 db.query(sqlTablaSingular, (errSingular) => {
                     if (errSingular) return res.status(500).send("Error creando tabla singular: " + errSingular.message);
 
-                    // Catálogo de tus 75 productos originales
+                    // 4. Catálogo Completo de tus 75 productos con sus Códigos de Barras Asignados
                     const listaAgropets = [
-                        ["Ricocan 7+ Años Adulto Raza Med/Gde x15kg", 12, 105.00, "Perros - Secos"],
-                        ["Ricocan Cordero y Cereales Adulto Raza Med/Gde x22kg", 2, 150.70, "Perros - Secos"],
-                        ["Ricocan Cordero y Cereales Adulto Raza Pequeña x15kg", 8, 105.00, "Perros - Secos"],
-                        ["Ricocan Multisabores Adultos Todas las Razas x22kg", 1, 150.70, "Perros - Secos"],
-                        ["Ricocan Original Adultos Todas las Razas x15kg", 15, 105.00, "Perros - Secos"],
-                        ["Ricocan Extruido Cachorros Carne/Leche Raza Peq x15kg", 6, 109.50, "Perros - Secos"],
-                        ["Ricocan Extruido Cachorros Carne/Leche Raza Med/Gde x22kg", 4, 157.50, "Perros - Secos"],
-                        ["Supercan Cachorros Carne y Leche x15kg", 10, 97.50, "Perros - Secos"],
-                        ["Supercan Adulto Carne y Cereales x25kg", 3, 140.00, "Perros - Secos"],
-                        ["Supercan Adulto Sabor Cordero x15kg", 9, 90.00, "Perros - Secos"],
-                        ["Supercan Adulto Buffet de Sabores x25kg", 14, 140.00, "Perros - Secos"],
-                        ["Yango Sabor Carne Adulto Todas las Razas x25kg", 7, 95.00, "Perros - Secos"],
-                        ["Bandido Extruido Adulto Carne x18kg", 11, 73.50, "Perros - Secos"],
-                        ["Thor Carne, Hígado y Cereales Adultos x25kg", 5, 107.50, "Perros - Secos"],
-                        ["Thor Carne Cachorros x25kg", 6, 112.50, "Perros - Secos"],
-                        ["Mimaskot Carne, Cereales y Vegetales x15kg", 8, 93.00, "Perros - Secos"],
-                        ["Mimaskot Adulto Carne, Pollo y Cereales Raza Peq x15kg", 4, 93.00, "Perros - Secos"],
-                        ["Mimaskot Adulto Carne, Pollo y Cereales Raza Peq x25kg", 2, 145.00, "Perros - Secos"],
-                        ["Mimaskot Carne/Cereales Cachorro Raza Med/Gde x15kg", 6, 93.00, "Perros - Secos"],
-                        ["Mimaskot Carne/Cereales Cachorro Raza Med/Gde x25kg", 3, 145.00, "Perros - Secos"],
-                        ["Mimaskot Carne/Cereales Cachorro Raza Pequeña x15kg", 9, 93.00, "Perros - Secos"],
-                        ["Nutrican Cachorro Perros x15kg", 11, 67.00, "Perros - Secos"],
-                        ["Nutrican Adulto Perros x15kg", 14, 69.00, "Perros - Secos"],
-                        ["Nutrican Adulto Perros x25kg", 5, 108.00, "Perros - Secos"],
-                        ["Zeus Adulto Perros x25kg", 7, 90.00, "Perros - Secos"],
-                        ["Zeus Cachorro Perros x25kg", 4, 93.00, "Perros - Secos"],
-                        ["Ricocat Festival de Sabores Adulto x15kg", 8, 133.00, "Gatos - Secos"],
-                        ["Ricocat Pollo, Sardina y Salmón Adulto x09kg", 2, 81.00, "Gatos - Secos"],
-                        ["Ricocat Carne, Salmón y Leche Adulto x09kg", 12, 81.00, "Gatos - Secos"],
-                        ["Ricocat Atún, Sardina y Trucha Adulto x09kg", 9, 81.00, "Gatos - Secos"],
-                        ["Ricocat Esterilizados Adulto x09kg", 4, 81.00, "Gatos - Secos"],
-                        ["Supercat Sardina, Atún y Trucha Adulto x09kg", 10, 70.50, "Gatos - Secos"],
-                        ["Supercat Carne y Leche Cachorros x09kg", 3, 67.50, "Gatos - Secos"],
-                        ["Ricocat Carne, Pescado y Leche Cachorro x15kg", 5, 111.00, "Gatos - Secos"],
-                        ["Michicat Pollo, Sardina y Atún Adulto x09kg", 15, 85.00, "Gatos - Secos"],
-                        ["Maxicat Pollo y Pescado Adulto x15kg", 7, 139.00, "Gatos - Secos"],
-                        ["Mimaskot Gatitos Pollo, Carne y Leche x9kg", 6, 75.00, "Gatos - Secos"],
-                        ["Mimaskot Gatos Adultos Salmón, Atún y Sardina x9kg", 10, 70.00, "Gatos - Secos"],
-                        ["Mimaskot Gatos Adultos Pollo, Carne y Salmón x9kg", 8, 70.00, "Gatos - Secos"],
-                        ["Nutrican Gatos Atún y Sardina x9kg", 12, 58.00, "Gatos - Secos"],
-                        ["Nutrican Gatos Adultos x25kg", 3, 110.00, "Gatos - Secos"],
-                        ["Arena Sanitaria Mimaskot para Gatos x5kg", 25, 13.00, "Gatos - Arena"],
-                        ["Arena Sanitaria Mimaskot para Gatos x10kg", 18, 23.00, "Gatos - Arena"],
-                        ["Arena Sanitaria Mimaskot para Gatos x20kg", 1, 40.00, "Gatos - Arena"],
-                        ["Caja Latas Ricocan Pate/Trocitos x24und (330gr)", 4, 102.00, "Húmedos"],
-                        ["Caja Latas Ricocat Húmedo Pate x24und (330gr)", 6, 115.00, "Húmedos"],
-                        ["Caja Pouches Ricocan Trocitos x15und (100gr)", 20, 25.00, "Húmedos"],
-                        ["Caja Pouches Ricocat Húmedo x15und (85gr)", 18, 26.00, "Húmedos"],
-                        ["Caja Latas Thor Adulto/Cachorro x24und (330gr)", 3, 92.00, "Húmedos"],
-                        ["Caja Latas Supercan Guisos x24und (280gr)", 5, 81.00, "Húmedos"],
-                        ["Shampoo Ricocan Frasco x380ml", 25, 12.00, "Higiene"],
-                        ["Shampoo Fresh Can Frasco x300ml", 30, 8.00, "Higiene"],
-                        ["Snack Ricocrack Caja x12und", 10, 72.00, "Snacks"],
-                        ["Super Plus Inicio Pellet 40kg (B001)", 15, 117.00, "Agrícola - Aves"],
-                        ["Super Plus Crecimiento Pellet 40kg (B002)", 2, 115.00, "Agrícola - Aves"],
-                        ["Super Plus Engorde Pellet 40kg (B003)", 8, 110.00, "Agrícola - Aves"],
-                        ["Polvo Super Plus Inicio Harinado 40kg (B004)", 12, 99.00, "Agrícola - Aves"],
-                        ["Polvo Super Plus Crecimiento Harinado 40kg (B005)", 4, 98.00, "Agrícola - Aves"],
-                        ["Polvo Super Plus Engorde Harinado 40kg (B006)", 20, 94.00, "Agrícola - Aves"],
-                        ["Hi Premium Buenamicyn-a Etts 40kg (B007)", 5, 130.00, "Agrícola - Aves"],
-                        ["Hi Premium Buenamicyn-a 20x1kg Etts 20kg (B008)", 10, 76.00, "Agrícola - Aves"],
-                        ["Hi Premium Buenamicyn-a Micro Pellet 40kg (B009)", 3, 135.00, "Agrícola - Aves"],
-                        ["Hi Premium Inicio Etts 40kg (B010)", 14, 119.00, "Agrícola - Aves"],
-                        ["Hi Premium Crecimiento Pellet 40kg (B011)", 6, 120.00, "Agrícola - Aves"],
-                        ["Hi Premium Engorde Pellet 40kg (B012)", 11, 118.00, "Agrícola - Aves"],
-                        ["Postura Hi Premium Pellet 40kg (B013)", 7, 110.00, "Agrícola - Aves"],
-                        ["Postura Hi Premium Polvo Harinado 40kg (B014)", 12, 96.00, "Agrícola - Aves"],
-                        ["Conejo Plus Hi-T Crecimiento Pellet 40kg (B015)", 9, 92.00, "Agrícola - Mamíferos"],
-                        ["Conejo Plus Hi-R Reproductora Pellet 40kg (B016)", 2, 95.00, "Agrícola - Mamíferos"],
-                        ["Cuy Plus Hi-E Crecimiento Pellet 40kg (B017)", 15, 95.00, "Agrícola - Mamíferos"],
-                        ["Cuy Plus Hi-R Reproductora Pellet 40kg (B018)", 4, 90.00, "Agrícola - Mamíferos"],
-                        ["Cuy Hi Premium Crecimiento Polvo Harinado 40kg (B019)", 8, 86.00, "Agrícola - Mamíferos"],
-                        ["Pura Casta Inicio Etts 40kg (B020)", 13, 122.00, "Agrícola - Gallos"],
-                        ["Pura Casta Crecimiento Pellet 40kg (B021)", 5, 117.00, "Agrícola - Gallos"],
-                        ["Pura Casta Acabado Pellet 40kg (B022)", 16, 112.00, "Agrícola - Gallos"],
-                        ["Pura Casta Muda Pellet 40kg (B023)", 3, 123.00, "Agrícola - Gallos"],
-                        ["Cerdos Eco Pig 1 Micro Pellet 25kg (B024)", 6, 145.00, "Agrícola - Cerdos"],
-                        ["Cerdos Eco Pig 2 Micro Pellet 25kg (B025)", 10, 127.00, "Agrícola - Cerdos"],
-                        ["Cerdos Eco Pig 3 Micro Pellet 25kg (B026)", 4, 109.00, "Agrícola - Cerdos"],
-                        ["Cerdos Gestación Hi Pig Harinado Polvo 40kg (B027)", 12, 76.00, "Agrícola - Cerdos"],
-                        ["Cerdos Lactancia Hi Pig Harinado Polvo 40kg (B028)", 7, 99.00, "Agrícola - Cerdos"],
-                        ["Cerdos Inicio 7+ Hi Pig Polvo Harinado 40kg (B029)", 2, 127.00, "Agrícola - Cerdos"],
-                        ["Cerdos Inicio 12+ Hi Pig Polvo Harinado 40kg (B030)", 9, 109.00, "Agrícola - Cerdos"],
-                        ["Cerdos Eco Pig 2 Polvo Harinado 40kg (B031)", 5, 176.00, "Agrícola - Cerdos"],
-                        ["Cerdos Eco Pig 3 Polvo Harinado 40kg (B032)", 8, 149.00, "Agrícola - Cerdos"],
-                        ["Cerdos Crecimiento Hi Pig (1) Harinado Polvo 40kg (B033)", 11, 96.00, "Agrícola - Cerdos"],
-                        ["Cerdos Crecimiento Hi Pig (2) Harinado Polvo 40kg (B034)", 14, 90.00, "Agrícola - Cerdos"],
-                        ["Cerdos Engorde Hi Pig Polvo Harinado 40kg (B035)", 3, 94.00, "Agrícola - Cerdos"],
-                        ["Pavo Hi Premium Inicio Etts 40kg (B036)", 6, 133.00, "Agrícola - Pavos"],
-                        ["Pavo Hi Premium Crecimiento Pellet 40kg (B037)", 4, 116.00, "Agrícola - Pavos"],
-                        ["Pavo Hi Premium Acabado Pellet 40kg (B038)", 10, 113.00, "Agrícola - Pavos"],
-                        ["Mercado Crecimiento Pellet 40kg (C001)", 18, 60.00, "Agrícola - Comercial"],
-                        ["Mercado Engorde Pellet 40kg (C002)", 22, 60.00, "Agrícola - Comercial"],
-                        ["Carne Crecimiento Pellet 40kg (C003)", 5, 70.00, "Agrícola - Comercial"],
-                        ["Carne Engorde Pellet 40kg (C004)", 11, 70.00, "Agrícola - Comercial"],
-                        ["Concentrado Mercado Carne Harinado 40kg (C005)", 14, 65.00, "Agrícola - Comercial"],
-                        ["Super Carne Inicio Etts 40kg (C006)", 2, 101.00, "Agrícola - Comercial"],
-                        ["Super Carne Crecimiento Pellet 40kg (C007)", 9, 101.00, "Agrícola - Comercial"],
-                        ["Super Carne Engorde Pellet 40kg (C008)", 7, 101.00, "Agrícola - Comercial"],
-                        ["Cuy Carne Pellet 40kg (C009)", 3, 78.00, "Agrícola - Comercial"],
-                        ["Cuy Carne Polvo Harinado 40kg (C010)", 12, 73.00, "Agrícola - Comercial"],
-                        ["Conejo Carne Pellet 40kg (C011)", 6, 80.00, "Agrícola - Comercial"]
+                        [7750100058, "Ricocan 7+ Años Adulto Raza Med/Gde x15kg", 12, 105.00, "Perros - Secos"],
+                        [7750100059, "Ricocan Cordero y Cereales Adulto Raza Med/Gde x22kg", 2, 150.70, "Perros - Secos"],
+                        [7750100060, "Ricocan Cordero y Cereales Adulto Raza Pequeña x15kg", 8, 105.00, "Perros - Secos"],
+                        [7750100061, "Ricocan Multisabores Adultos Todas las Razas x22kg", 1, 150.70, "Perros - Secos"],
+                        [7750100062, "Ricocan Original Adultos Todas las Razas x15kg", 15, 105.00, "Perros - Secos"],
+                        [7750100063, "Ricocan Extruido Cachorros Carne/Leche Raza Peq x15kg", 6, 109.50, "Perros - Secos"],
+                        [7750100064, "Ricocan Extruido Cachorros Carne/Leche Raza Med/Gde x22kg", 4, 157.50, "Perros - Secos"],
+                        [7750100065, "Supercan Cachorros Carne y Leche x15kg", 10, 97.50, "Perros - Secos"],
+                        [7750100066, "Supercan Adulto Carne y Cereales x25kg", 3, 140.00, "Perros - Secos"],
+                        [7750100067, "Supercan Adulto Sabor Cordero x15kg", 9, 90.00, "Perros - Secos"],
+                        [7750100068, "Supercan Adulto Buffet de Sabores x25kg", 14, 140.00, "Perros - Secos"],
+                        [7750100069, "Yango Sabor Carne Adulto Todas las Razas x25kg", 7, 95.00, "Perros - Secos"],
+                        [7750100070, "Bandido Extruido Adulto Carne x18kg", 11, 73.50, "Perros - Secos"],
+                        [7750100071, "Thor Carne, Hígado y Cereales Adultos x25kg", 5, 107.50, "Perros - Secos"],
+                        [7750100072, "Thor Carne Cachorros x25kg", 6, 112.50, "Perros - Secos"],
+                        [7750100073, "Mimaskot Carne, Cereales y Vegetales x15kg", 8, 93.00, "Perros - Secos"],
+                        [7750100074, "Mimaskot Adulto Carne, Pollo y Cereales Raza Peq x15kg", 4, 93.00, "Perros - Secos"],
+                        [7750100075, "Mimaskot Adulto Carne, Pollo y Cereales Raza Peq x25kg", 2, 145.00, "Perros - Secos"],
+                        [7750100076, "Mimaskot Carne/Cereales Cachorro Raza Med/Gde x15kg", 6, 93.00, "Perros - Secos"],
+                        [7750100077, "Mimaskot Carne/Cereales Cachorro Raza Med/Gde x25kg", 3, 145.00, "Perros - Secos"],
+                        [7750100078, "Mimaskot Carne/Cereales Cachorro Raza Pequeña x15kg", 9, 93.00, "Perros - Secos"],
+                        [7750100079, "Nutrican Cachorro Perros x15kg", 11, 67.00, "Perros - Secos"],
+                        [7750100080, "Nutrican Adulto Perros x15kg", 14, 69.00, "Perros - Secos"],
+                        [7750100081, "Nutrican Adulto Perros x25kg", 5, 108.00, "Perros - Secos"],
+                        [7750100082, "Zeus Adulto Perros x25kg", 7, 90.00, "Perros - Secos"],
+                        [7750100083, "Zeus Cachorro Perros x25kg", 4, 93.00, "Perros - Secos"],
+                        [7750100084, "Ricocat Festival de Sabores Adulto x15kg", 8, 133.00, "Gatos - Secos"],
+                        [7750100085, "Ricocat Pollo, Sardina y Salmón Adulto x09kg", 2, 81.00, "Gatos - Secos"],
+                        [7750100086, "Ricocat Carne, Salmón y Leche Adulto x09kg", 12, 81.00, "Gatos - Secos"],
+                        [7750100087, "Ricocat Atún, Sardina y Trucha Adulto x09kg", 9, 81.00, "Gatos - Secos"],
+                        [7750100088, "Ricocat Esterilizados Adulto x09kg", 4, 81.00, "Gatos - Secos"],
+                        [7750100089, "Supercat Sardina, Atún y Trucha Adulto x09kg", 10, 70.50, "Gatos - Secos"],
+                        [7750100090, "Supercat Carne y Leche Cachorros x09kg", 3, 67.50, "Gatos - Secos"],
+                        [7750100091, "Ricocat Carne, Pescado y Leche Cachorro x15kg", 5, 111.00, "Gatos - Secos"],
+                        [7750100092, "Michicat Pollo, Sardina y Atún Adulto x09kg", 15, 85.00, "Gatos - Secos"],
+                        [7750100093, "Maxicat Pollo y Pescado Adulto x15kg", 7, 139.00, "Gatos - Secos"],
+                        [7750100094, "Mimaskot Gatitos Pollo, Carne y Leche x9kg", 6, 75.00, "Gatos - Secos"],
+                        [7750100095, "Mimaskot Gatos Adultos Salmón, Atún y Sardina x9kg", 10, 70.00, "Gatos - Secos"],
+                        [7750100096, "Mimaskot Gatos Adultos Pollo, Carne y Salmón x9kg", 8, 70.00, "Gatos - Secos"],
+                        [7750100097, "Nutrican Gatos Atún y Sardina x9kg", 12, 58.00, "Gatos - Secos"],
+                        [7750100098, "Nutrican Gatos Adultos x25kg", 3, 110.00, "Gatos - Secos"],
+                        [7750100099, "Arena Sanitaria Mimaskot para Gatos x5kg", 25, 13.00, "Gatos - Arena"],
+                        [7750100100, "Arena Sanitaria Mimaskot para Gatos x10kg", 18, 23.00, "Gatos - Arena"],
+                        [7750100101, "Arena Sanitaria Mimaskot para Gatos x20kg", 1, 40.00, "Gatos - Arena"],
+                        [7750100102, "Caja Latas Ricocan Pate/Trocitos x24und (330gr)", 4, 102.00, "Húmedos"],
+                        [7750100103, "Caja Latas Ricocat Húmedo Pate x24und (330gr)", 6, 115.00, "Húmedos"],
+                        [7750100104, "Caja Pouches Ricocan Trocitos x15und (100gr)", 20, 25.00, "Húmedos"],
+                        [7750100105, "Caja Pouches Ricocat Húmedo x15und (85gr)", 18, 26.00, "Húmedos"],
+                        [7750100106, "Caja Latas Thor Adulto/Cachorro x24und (330gr)", 3, 92.00, "Húmedos"],
+                        [7750100107, "Caja Latas Supercan Guisos x24und (280gr)", 5, 81.00, "Húmedos"],
+                        [7750100108, "Shampoo Ricocan Frasco x380ml", 25, 12.00, "Higiene"],
+                        [7750100109, "Shampoo Fresh Can Frasco x300ml", 30, 8.00, "Higiene"],
+                        [7750100110, "Snack Ricocrack Caja x12und", 10, 72.00, "Snacks"],
+                        // 🌾 Línea Agrícola (IDs adaptados numéricamente para compatibilidad)
+                        [8001, "Super Plus Inicio Pellet 40kg (B001)", 15, 117.00, "Agrícola - Aves"],
+                        [8002, "Super Plus Crecimiento Pellet 40kg (B002)", 2, 115.00, "Agrícola - Aves"],
+                        [8003, "Super Plus Engorde Pellet 40kg (B003)", 8, 110.00, "Agrícola - Aves"],
+                        [8004, "Polvo Super Plus Inicio Harinado 40kg (B004)", 12, 99.00, "Agrícola - Aves"],
+                        [8005, "Polvo Super Plus Crecimiento Harinado 40kg (B005)", 4, 98.00, "Agrícola - Aves"],
+                        [8006, "Polvo Super Plus Engorde Harinado 40kg (B006)", 20, 94.00, "Agrícola - Aves"],
+                        [8007, "Hi Premium Buenamicyn-a Etts 40kg (B007)", 5, 130.00, "Agrícola - Aves"],
+                        [8008, "Hi Premium Buenamicyn-a 20x1kg Etts 20kg (B008)", 10, 76.00, "Agrícola - Aves"],
+                        [8009, "Hi Premium Buenamicyn-a Micro Pellet 40kg (B009)", 3, 135.00, "Agrícola - Aves"],
+                        [8010, "Hi Premium Inicio Etts 40kg (B010)", 14, 119.00, "Agrícola - Aves"],
+                        [8011, "Hi Premium Crecimiento Pellet 40kg (B011)", 6, 120.00, "Agrícola - Aves"],
+                        [8012, "Hi Premium Engorde Pellet 40kg (B012)", 11, 118.00, "Agrícola - Aves"],
+                        [8013, "Postura Hi Premium Pellet 40kg (B013)", 7, 110.00, "Agrícola - Aves"],
+                        [8014, "Postura Hi Premium Polvo Harinado 40kg (B014)", 12, 96.00, "Agrícola - Aves"],
+                        [8015, "Conejo Plus Hi-T Crecimiento Pellet 40kg (B015)", 9, 92.00, "Agrícola - Mamíferos"],
+                        [8016, "Conejo Plus Hi-R Reproductora Pellet 40kg (B016)", 2, 95.00, "Agrícola - Mamíferos"],
+                        [8017, "Cuy Plus Hi-E Crecimiento Pellet 40kg (B017)", 15, 95.00, "Agrícola - Mamíferos"],
+                        [8018, "Cuy Plus Hi-R Reproductora Pellet 40kg (B018)", 4, 90.00, "Agrícola - Mamíferos"],
+                        [8019, "Cuy Hi Premium Crecimiento Polvo Harinado 40kg (B019)", 8, 86.00, "Agrícola - Mamíferos"],
+                        [8020, "Pura Casta Inicio Etts 40kg (B020)", 13, 122.00, "Agrícola - Gallos"],
+                        [8021, "Pura Casta Crecimiento Pellet 40kg (B021)", 5, 117.00, "Agrícola - Gallos"],
+                        [8022, "Pura Casta Acabado Pellet 40kg (B022)", 16, 112.00, "Agrícola - Gallos"],
+                        [8023, "Pura Casta Muda Pellet 40kg (B023)", 3, 123.00, "Agrícola - Gallos"],
+                        [8024, "Cerdos Eco Pig 1 Micro Pellet 25kg (B024)", 6, 145.00, "Agrícola - Cerdos"],
+                        [8025, "Cerdos Eco Pig 2 Micro Pellet 25kg (B025)", 10, 127.00, "Agrícola - Cerdos"],
+                        [8026, "Cerdos Eco Pig 3 Micro Pellet 25kg (B026)", 4, 109.00, "Agrícola - Cerdos"],
+                        [8027, "Cerdos Gestación Hi Pig Harinado Polvo 40kg (B027)", 12, 76.00, "Agrícola - Cerdos"],
+                        [8028, "Cerdos Lactancia Hi Pig Harinado Polvo 40kg (B028)", 7, 99.00, "Agrícola - Cerdos"],
+                        [8029, "Cerdos Inicio 7+ Hi Pig Polvo Harinado 40kg (B029)", 2, 127.00, "Agrícola - Cerdos"],
+                        [8030, "Cerdos Inicio 12+ Hi Pig Polvo Harinado 40kg (B030)", 9, 109.00, "Agrícola - Cerdos"],
+                        [8031, "Cerdos Eco Pig 2 Polvo Harinado 40kg (B031)", 5, 176.00, "Agrícola - Cerdos"],
+                        [8032, "Cerdos Eco Pig 3 Polvo Harinado 40kg (B032)", 8, 149.00, "Agrícola - Cerdos"],
+                        [8033, "Cerdos Crecimiento Hi Pig (1) Harinado Polvo 40kg (B033)", 11, 96.00, "Agrícola - Cerdos"],
+                        [8034, "Cerdos Crecimiento Hi Pig (2) Harinado Polvo 40kg (B034)", 14, 90.00, "Agrícola - Cerdos"],
+                        [8035, "Cerdos Engorde Hi Pig Polvo Harinado 40kg (B035)", 3, 94.00, "Agrícola - Cerdos"],
+                        [8036, "Pavo Hi Premium Inicio Etts 40kg (B036)", 6, 133.00, "Agrícola - Pavos"],
+                        [8037, "Pavo Hi Premium Crecimiento Pellet 40kg (B037)", 4, 116.00, "Agrícola - Pavos"],
+                        [8038, "Pavo Hi Premium Acabado Pellet 40kg (B038)", 10, 113.00, "Agrícola - Pavos"],
+                        // 🛒 Línea Comercial
+                        [9001, "Mercado Crecimiento Pellet 40kg (C001)", 18, 60.00, "Agrícola - Comercial"],
+                        [9002, "Mercado Engorde Pellet 40kg (C002)", 22, 60.00, "Agrícola - Comercial"],
+                        [9003, "Carne Crecimiento Pellet 40kg (C003)", 5, 70.00, "Agrícola - Comercial"],
+                        [9004, "Carne Engorde Pellet 40kg (C004)", 11, 70.00, "Agrícola - Comercial"],
+                        [9005, "Concentrado Mercado Carne Harinado 40kg (C005)", 14, 65.00, "Agrícola - Comercial"],
+                        [9006, "Super Carne Inicio Etts 40kg (C006)", 2, 101.00, "Agrícola - Comercial"],
+                        [9007, "Super Carne Crecimiento Pellet 40kg (C007)", 9, 101.00, "Agrícola - Comercial"],
+                        [9008, "Super Carne Engorde Pellet 40kg (C008)", 7, 101.00, "Agrícola - Comercial"],
+                        [9009, "Cuy Carne Pellet 40kg (C009)", 3, 78.00, "Agrícola - Comercial"],
+                        [9010, "Cuy Carne Polvo Harinado 40kg (C010)", 12, 73.00, "Agrícola - Comercial"],
+                        [9011, "Conejo Carne Pellet 40kg (C011)", 6, 80.00, "Agrícola - Comercial"]
                     ];
 
-                    // Duplicamos los valores en el mapeo para rellenar tanto los campos nuevos como viejos
+                    // 5. Mapeamos respetando el ID asignado en la posición 0 de cada subarray
                     const datosHibridos = listaAgropets.map(p => [
-                        p[0], // nombre
-                        p[1], // cantidad
-                        p[1], // stock (duplicado)
-                        p[2], // precio
-                        p[2], // precio_venta (duplicado)
-                        p[3]  // categoria
+                        p[0], // id (Código de barras o ID numérico adaptado)
+                        p[1], // nombre
+                        p[2], // cantidad
+                        p[2], // stock (duplicado)
+                        p[3], // precio
+                        p[3], // precio_venta (duplicado)
+                        p[4]  // categoria
                     ]);
 
-                    const queryInsertarPlural = 'INSERT INTO productos (nombre, cantidad, stock, precio, precio_venta, categoria) VALUES ?';
-                    const queryInsertarSingular = 'INSERT INTO producto (nombre, cantidad, stock, precio, precio_venta, categoria) VALUES ?';
+                    const queryInsertarPlural = 'INSERT INTO productos (id, nombre, cantidad, stock, precio, precio_venta, categoria) VALUES ?';
+                    const queryInsertarSingular = 'INSERT INTO producto (id, nombre, cantidad, stock, precio, precio_venta, categoria) VALUES ?';
 
                     // Insertamos en la tabla plural
                     db.query(queryInsertarPlural, [datosHibridos], (errInsert1) => {
@@ -522,7 +525,7 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
                         db.query(queryInsertarSingular, [datosHibridos], (errInsert2) => {
                             if (errInsert2) return res.status(500).send("Error insertando en producto: " + errInsert2.message);
 
-                            res.send(`<h1>🎉 ¡Base de datos BLINDADA con éxito!</h1><p>Se reestructuraron las tablas 'productos' y 'producto' con todas las combinaciones de columnas posibles.</p>`);
+                            res.send(`<h1>🎉 ¡Base de datos BLINDADA y vinculada a Códigos de Barra!</h1><p>Se reestructuraron las tablas con IDs reales de barra. Ya puedes usar '7750100058' en Android.</p>`);
                         });
                     });
                 });
