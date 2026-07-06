@@ -62,6 +62,81 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
+const { GoogleGenAI } = require("@google/generative-ai");
+
+// Inicializamos la IA con la clave que guardaste en tus variables de entorno
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+// ==========================================
+// 🧠 NUEVA RUTA: ANÁLISIS E INFORME IA PREDICTIVO
+// ==========================================
+app.get('/api/inteligencia', (req, res) => {
+    
+    // 1. Consultamos los datos clave de tu inventario en Clever Cloud
+    // Vamos a traer los productos que tienen stock bajo (ej. menos de 5 unidades) y un resumen general
+    const sqlStockCritico = "SELECT nombre, stock, precio_venta FROM productos WHERE stock <= 5 ORDER BY stock ASC LIMIT 5";
+    const sqlResumenVentas = "SELECT SUM(total) as ventas_mes FROM ventas WHERE MONTH(fecha) = MONTH(CURRENT_DATE())";
+
+    db.query(sqlStockCritico, (errCritico, productosCriticos) => {
+        if (errCritico) {
+            console.error("Error base de datos IA:", errCritico);
+            return res.status(500).json({ mensaje: "Error al consultar inventario para la IA" });
+        }
+
+        db.query(sqlResumenVentas, (errVentas, resultadoVentas) => {
+            const ventasMes = resultadoVentas && resultadoVentas[0].ventas_mes ? resultadoVentas[0].ventas_mes : 0;
+
+            // 2. Formateamos los datos en un texto limpio para que la IA los entienda perfectamente
+            let listaProductos = productosCriticos.map(p => `- ${p.nombre}: quedan ${p.stock} unidades`).join("\n");
+            if (productosCriticos.length === 0) listaProductos = "- Todo el stock está estable por ahora.";
+
+            // 3. Redactamos las instrucciones secretas (Prompt) para el Agente de IA
+            const promptContexto = `
+                Eres el asesor financiero e inteligente de la veterinaria y tienda de mascotas "Agropets StockPyme".
+                Analiza los siguientes datos reales del negocio actual:
+                - Ventas totales de este mes: S/ ${ventasMes}
+                - Productos en desabastecimiento o stock crítico (menos de 5 unidades):
+                ${listaProductos}
+
+                Por favor, genera un informe súper corto, directo y profesional para el dueño del negocio en formato de texto plano. Debe incluir:
+                1. Una predicción rápida de qué pasará si no se reabastece pronto.
+                2. Exactamente 2 recomendaciones de negocio ultra precisas para aumentar ganancias o salvar el stock.
+                Sé breve, usa emojis amigables y no uses asteriscos ni formatos raros de Markdown pesados.
+            `;
+
+            // 4. Le pedimos a Gemini que procese los datos y genere las respuestas
+            async function generarInforme() {
+                try {
+                    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" }); // El modelo más rápido y optimizado
+                    const response = await model.generateContent(promptContexto);
+                    const textoIA = response.text;
+
+                    // 5. Inventamos unos datos numéricos para tu gráfico de líneas en Android (Simulación de predicción)
+                    // En el futuro esto puede salir de una fórmula matemática de tus ventas pasadas
+                    const datosGraficoPrediccion = [
+                        Math.round(ventasMes * 0.8), 
+                        Math.round(ventasMes * 0.9), 
+                        Math.round(ventasMes), 
+                        Math.round(ventasMes * 1.15), 
+                        Math.round(ventasMes * 1.3)
+                    ];
+
+                    // Enviamos la respuesta final impecable hacia Android
+                    res.json({
+                        recomendaciones: textoIA,
+                        prediccionesGrafico: datosGraficoPrediccion
+                    });
+
+                } catch (errorIA) {
+                    console.error("Error al conectar con Gemini API:", errorIA);
+                    res.status(500).json({ mensaje: "El agente de IA está indispuesto en este momento." });
+                }
+            }
+
+            generarInforme();
+        });
+    });
+});
 // 🧑‍💼 NUEVA RUTA: REGISTRAR EMPLEADO
 // ==========================================
 app.post('/api/usuarios', (req, res) => {
