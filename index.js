@@ -26,7 +26,7 @@ if (!fs.existsSync(dirBoletas)){
 
 
 // Hacer que las boletas se puedan ver por internet (públicas)
-app.use('/boletas', express.static(dirBoletas));}
+app.use('/boletas', express.static(dirBoletas));
 
 
 // 🌟 2. TRUCO CRÍTICO: Habilitar los lectores de JSON ARRIBA de las rutas
