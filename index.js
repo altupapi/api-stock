@@ -62,10 +62,10 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
-const { GoogleGenAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Inicializamos la IA con la clave que guardaste en tus variables de entorno
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Inicializamos la IA correctamente con el método oficial
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ==========================================
 // 🧠 NUEVA RUTA: ANÁLISIS E INFORME IA PREDICTIVO
@@ -107,7 +107,7 @@ app.get('/api/inteligencia', (req, res) => {
             // 4. Le pedimos a Gemini que procese los datos y genere las respuestas
             async function generarInforme() {
                 try {
-                    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" }); // El modelo más rápido y optimizado
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // El modelo más rápido y optimizado
                     const response = await model.generateContent(promptContexto);
                     const textoIA = response.text;
 
@@ -250,7 +250,7 @@ app.get('/api/categorias', (req, res) => {
 });
 
 // 📊 ENDPOINT DE REPORTES BLINDADO CONTRA VALORES NULOS
-app.get('/api/reportes/resumen', (req, res) => {
+app.get('/api/resumen', (req, res) => {
     const query = `
         SELECT 
             CAST(IFNULL(SUM(cantidad * precio), 0) AS DECIMAL(10,2)) AS valorInventario,
