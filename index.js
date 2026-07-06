@@ -47,7 +47,7 @@ app.post('/api/compras-proveedor', (req, res) => {
 
     detalles.forEach(item => {
         // 🌟 CLAVE: Aquí SUMAMOS al stock actual porque es una ENTRADA
-        const querySumarStock = 'UPDATE productos SET cantidad = cantidad + ? WHERE sku = ?';
+        const querySumarStock = 'UPDATE productos SET cantidad = cantidad + ? WHERE id = ?';
         
         db.query(querySumarStock, [parseInt(item.cantidad), item.producto_id], (err, result) => {
             consultasCompletadas++;
