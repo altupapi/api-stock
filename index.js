@@ -31,7 +31,7 @@ db.connect(err => {
     console.log('✅ Conectado exitosamente a MySQL en Clever Cloud');
 });
 // =========================================================================
-// 🚚 NUEVO ENDPOINT: PROCESAR COMPRAS A PROVEEDORES (ENTRADA DE STOCK)
+// 🚚 ENDPOINT CORREGIDO: PROCESAR COMPRAS A PROVEEDORES (ENTRADA DE STOCK)
 // =========================================================================
 app.post('/api/compras-proveedor', (req, res) => {
     const { proveedor, detalles } = req.body;
@@ -46,10 +46,14 @@ app.post('/api/compras-proveedor', (req, res) => {
     let huboError = false;
 
     detalles.forEach(item => {
-        // 🌟 CLAVE: Aquí SUMAMOS al stock actual porque es una ENTRADA
+        // ✅ USAMOS 'id' que es la columna real de tu tabla
         const querySumarStock = 'UPDATE productos SET cantidad = cantidad + ? WHERE id = ?';
         
-        db.query(querySumarStock, [parseInt(item.cantidad), item.producto_id], (err, result) => {
+        // Convertimos a número entero de JavaScript seguro (soporta valores mayores que un int de Java)
+        const idProducto = Number(item.producto_id);
+        const cantidadSumar = parseInt(item.cantidad);
+
+        db.query(querySumarStock, [cantidadSumar, idProducto], (err, result) => {
             consultasCompletadas++;
 
             if (err) {
