@@ -62,7 +62,37 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
+// 🧑‍💼 NUEVA RUTA: REGISTRAR EMPLEADO
+// ==========================================
+app.post('/api/usuarios', (req, res) => {
+    // Extraemos los datos que envía Android
+    const { usuario, password, rol } = req.body;
 
+    // Validación básica
+    if (!usuario || !password) {
+        return res.status(400).json({ mensaje: "Usuario y contraseña son obligatorios" });
+    }
+
+    // Por seguridad, si no llega un rol desde la app, forzamos que sea Trabajador
+    const rolAsignado = rol ? rol : 'Trabajador';
+
+    // Ajusta los nombres de las columnas (usuario, password, rol) 
+    // si en tu base de datos se llaman diferente (ej. 'clave', 'nombre_usuario')
+    const sql = "INSERT INTO usuarios (usuario, password, rol) VALUES (?, ?, ?)";
+    
+    db.query(sql, [usuario, password, rolAsignado], (err, result) => {
+        if (err) {
+            console.error("Error al registrar el empleado:", err);
+            return res.status(500).json({ mensaje: "Error en la base de datos al crear el usuario" });
+        }
+        
+        console.log("✅ Nuevo empleado registrado con ID:", result.insertId);
+        res.status(201).json({ 
+            mensaje: "Cuenta creada con éxito",
+            id: result.insertId 
+        });
+    });
+});
 // =========================================================================
 // 📦 ENDPOINTS: Gestión de Productos de Agropets
 // =========================================================================
