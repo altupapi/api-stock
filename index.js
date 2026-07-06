@@ -238,26 +238,27 @@ app.get('/api/productos', (req, res) => {
 
 // 🔄 Actualizar un producto existente por su ID (PUT)
 app.put('/api/productos/:id', (req, res) => {
-    const idProducto = req.params.id;
-    const { nombre, cantidad, precio, categoria } = req.body; 
+    const id = req.params.id;
+    const { nombre, precio, cantidad, categoria } = req.body;
 
-    console.log(`🔄 Petición de actualización para el ID: ${idProducto}`, req.body);
-
-    const query = 'UPDATE productos SET nombre = ?, cantidad = ?, precio = ?, categoria = ? WHERE id = ?';
-    const categoriaFinal = categoria || 'General';
-
-    db.query(query, [nombre, parseInt(cantidad), parseFloat(precio), categoriaFinal, idProducto], (err, result) => {
+    const query = 'UPDATE productos SET nombre = ?, precio = ?, cantidad = ?, categoria = ? WHERE id = ?';
+    
+    db.query(query, [nombre, precio, cantidad, categoria, id], (err, result) => {
         if (err) {
-            console.error("❌ Error de MySQL al actualizar:", err.message);
+            console.error("❌ Error en la base de datos:", err);
             return res.status(500).json({ error: err.message });
         }
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "Producto no encontrado" });
+
+        // 🔍 ESTA LÍNEA TE DIRÁ LA VERDAD:
+        console.log(`📊 Filas que coincidieron: ${result.matchedRows || result.affectedRows}`);
+
+        if ((result.matchedRows || result.affectedRows) === 0) {
+            console.log(`⚠️ Alerta: Se intentó editar el ID ${id} pero NO existe en la base de datos.`);
+            return res.status(404).json({ message: "El producto no existe con ese ID" });
         }
-        
-        console.log(`✅ ¡Producto con ID ${idProducto} modificado con éxito!`);
-        res.json({ status: "success", message: '📦 Stock actualizado correctamente' });
+
+        console.log(`✅ ¡Producto con ID ${id} modificado con éxito!`);
+        res.json({ message: "Producto actualizado" });
     });
 });
 
