@@ -62,96 +62,67 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-// Inicializamos la IA correctamente con el método oficial
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // =========================================================================
-// 🧠 RUTA ULTRA-CORREGIDA: ANÁLISIS E INFORME IA PREDICTIVO
+// 🧠 RUTA 100% MATEMÁTICA Y SIN LÍMITES: ANÁLISIS PREDICTIVO (SIN IA)
 // =========================================================================
 app.get('/api/inteligencia', (req, res) => {
     
-    // 1. Consultamos usando los nombres correctos de tus columnas: 'cantidad' y 'precio'
+    // 1. Consultamos productos en stock crítico (menos de 5 unidades)
     const sqlStockCritico = "SELECT nombre, cantidad, precio FROM productos WHERE cantidad <= 5 ORDER BY cantidad ASC LIMIT 5";
     
     db.query(sqlStockCritico, (errCritico, productosCriticos) => {
         if (errCritico) {
-            console.error("❌ Error base de datos IA (Stock):", errCritico);
-            return res.status(500).json({ mensaje: "Error al consultar inventario para la IA", detalle: errCritico.message });
+            console.error("❌ Error base de datos (Stock):", errCritico);
+            return res.status(500).json({ mensaje: "Error al consultar inventario", detalle: errCritico.message });
         }
 
-        // 2. Usamos una consulta segura para calcular el valor total y simular las ventas del mes
+        // 2. Calculamos el valor del inventario para la proyección de ventas
         const sqlResumenVentas = "SELECT CAST(IFNULL(SUM(cantidad * precio), 0) AS DECIMAL(10,2)) AS valor_inventario FROM productos";
 
         db.query(sqlResumenVentas, (errVentas, resultadoVentas) => {
-            let ventasMes = 0;
-            if (!errVentas && resultadoVentas && resultadoVentas[0]) {
-                const valorInventario = parseFloat(resultadoVentas[0].valor_inventario) || 0;
-                // Usamos la misma fórmula matemática predictiva de tus reportes
-                ventasMes = parseFloat(((valorInventario * 0.12) * 24).toFixed(2));
+            if (errVentas) {
+                console.error("❌ Error base de datos (Ventas):", errVentas);
+                return res.status(500).json({ mensaje: "Error al calcular ventas", detalle: errVentas.message });
             }
 
-            // 3. Formateamos los datos usando '.cantidad'
-            let listaProductos = productosCriticos.map(p => `- ${p.nombre}: quedan ${p.cantidad} unidades`).join("\n");
-            if (productosCriticos.length === 0) listaProductos = "- Todo el stock está estable por ahora.";
+            const valorInventario = parseFloat(resultadoVentas[0].valor_inventario) || 0;
+            // Tu misma fórmula financiera predictiva
+            const ventasMes = parseFloat(((valorInventario * 0.12) * 24).toFixed(2));
 
-            // 4. Redactamos las instrucciones para el Agente de IA
-            const promptContexto = `
-                Eres el asesor financiero e inteligente de la veterinaria y tienda de mascotas "Agropets StockPyme".
-                Analiza los siguientes datos reales del negocio actual:
-                - Ventas totales estimadas de este mes: S/ ${ventasMes}
-                - Productos en desabastecimiento o stock crítico (menos de 5 unidades):
-                ${listaProductos}
-
-                Por favor, genera un informe súper corto, directo y profesional para el dueño del negocio en formato de texto plano. Debe incluir:
-                1. Una predicción rápida de qué pasará si no se reabastece pronto.
-                2. Exactamente 2 recomendaciones de negocio ultra precisas para aumentar ganancias o salvar el stock.
-                Sé breve, usa emojis amigables y no uses asteriscos ni formatos raros de Markdown pesados.
-            `;
-
-            // 5. Función asíncrona interna corregida con el estándar oficial del SDK
-            async function generarInforme() {
-                try {
-                    // Jalamas el modelo correcto compatible
-                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                    
-                    // LLAMADA CORREGIDA: Se pasa el objeto estructurado en lugar del string crudo
-                    const response = await model.generateContent({
-                        contents: [{ role: 'user', parts: [{ text: promptContexto }] }]
-                    });
-                    
-                    // Extraemos el texto usando la propiedad estándar
-                    const textoIA = response.response.text();
-
-                    // Datos numéricos simulados para tu gráfico de líneas en Android
-                    const datosGraficoPrediccion = [
-                        Math.round(ventasMes * 0.8), 
-                        Math.round(ventasMes * 0.9), 
-                        Math.round(ventasMes), 
-                        Math.round(ventasMes * 1.15), 
-                        Math.round(ventasMes * 1.3)
-                    ];
-
-                    // Enviamos la respuesta final impecable hacia Android
-                    return res.json({
-                        recomendaciones: textoIA,
-                        prediccionesGrafico: datosGraficoPrediccion
-                    });
-
-                } catch (errorIA) {
-                    console.error("❌ Error al conectar con Gemini API:", errorIA.message);
-                    return res.status(500).json({ 
-                        mensaje: "El agente de IA está indispuesto en este momento.",
-                        detalle: errorIA.message 
-                    });
-                }
+            // 3. 📝 LÓGICA DE TEXTO AUTOMÁTICO (Reemplaza a la IA)
+            let textoRecomendaciones = "";
+            
+            if (productosCriticos.length === 0) {
+                textoRecomendaciones = `✅ ¡Excelente trabajo con el stock!\n\nTu inventario está muy sano, no tienes productos en riesgo de agotarse.\n\n📈 Predicción:\nBasado en tus datos actuales, estimamos que el flujo de ventas alcance los S/ ${ventasMes} este mes. ¡Sigue así!`;
+            } else {
+                // Extraemos solo los nombres para que el texto se lea natural
+                const nombresCriticos = productosCriticos.map(p => p.nombre.substring(0, 20) + "...").join(", ");
+                
+                textoRecomendaciones = `⚠️ ¡Alerta de Inventario!\n\nTienes ${productosCriticos.length} productos a punto de agotarse (Ej: ${nombresCriticos}).\n\n💡 Recomendaciones:\n1. Reabastece urgente estos artículos para no perder clientes frecuentes.\n2. Tu proyección mensual es de S/ ${ventasMes}. ¡Evita que la falta de stock congele tus ganancias!`;
             }
 
-            generarInforme();
+            // 4. 📈 LÓGICA DEL GRÁFICO (Curva ascendente matemática de 7 puntos)
+            const datosGraficoPrediccion = [
+                Math.round(ventasMes * 0.3),  // Hace 3 semanas
+                Math.round(ventasMes * 0.45), // Hace 2 semanas
+                Math.round(ventasMes * 0.65), // Hace 1 semana
+                Math.round(ventasMes * 0.85), // Días recientes
+                Math.round(ventasMes),        // HOY
+                Math.round(ventasMes * 1.15), // Proyección futuro cercano (+15%)
+                Math.round(ventasMes * 1.3)   // Proyección meta final (+30%)
+            ];
+
+            // 5. Enviamos la respuesta a Android. 
+            // ⚡ ¡Responderá al instante!
+            return res.json({
+                recomendaciones: textoRecomendaciones,
+                prediccionesGrafico: datosGraficoPrediccion
+            });
         });
     });
 });
+
 // 🧑‍💼 NUEVA RUTA: REGISTRAR EMPLEADO
 // ==========================================
 app.post('/api/usuarios', (req, res) => {
