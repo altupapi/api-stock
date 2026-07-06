@@ -3,6 +3,13 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
 
+
+// 📄 Herramientas para la Boleta PDF
+const fs = require('fs');
+const path = require('path');
+const PDFDocument = require('pdfkit');
+
+
 // 1. Configuración de CORS
 app.use(cors({
     origin: '*',
@@ -10,9 +17,22 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+
+// Crear la carpeta "boletas" automáticamente si no existe
+const dirBoletas = path.join(__dirname, 'boletas');
+if (!fs.existsSync(dirBoletas)){
+    fs.mkdirSync(dirBoletas);
+}
+
+
+// Hacer que las boletas se puedan ver por internet (públicas)
+app.use('/boletas', express.static(dirBoletas));}
+
+
 // 🌟 2. TRUCO CRÍTICO: Habilitar los lectores de JSON ARRIBA de las rutas
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 
 // 🔌 3. Configuración de conexión con Clever Cloud
 const db = mysql.createConnection({
@@ -30,6 +50,8 @@ db.connect(err => {
     }
     console.log('✅ Conectado exitosamente a MySQL en Clever Cloud');
 });
+
+
 // =========================================================================
 // 🚚 ENDPOINT CORREGIDO: PROCESAR COMPRAS A PROVEEDORES (ENTRADA DE STOCK)
 // =========================================================================
@@ -71,6 +93,8 @@ app.post('/api/compras-proveedor', (req, res) => {
         });
     });
 });
+
+
 // =========================================================================
 // 🔐 ENDPOINT: Inicio de sesión dinámico desde Base de Datos (Con Roles)
 // =========================================================================
@@ -316,13 +340,14 @@ app.get('/api/resumen', (req, res) => {
     });
 });
 
-/// =========================================================================
-// 🛒 ENDPOINT CORREGIDO: PROCESAR COMPRAS MÚLTIPLES (POST /api/ventas)
+// =========================================================================
+// 🛒 ENDPOINT ACTUALIZADO: PROCESAR COMPRAS Y GENERAR BOLETA PDF
 // =========================================================================
 app.post('/api/ventas', (req, res) => {
-    const { monto_total, detalles } = req.body;
+    // 📥 Atrapamos también los datos del cliente que Android ahora envía
+    const { monto_total, detalles, cliente_nombre, cliente_telefono, metodo_pago } = req.body;
     
-    console.log(`🛒 Recibiendo venta múltiple de Agropets en la nube por: S/ ${monto_total}`);
+    console.log(`🛒 Recibiendo venta de Agropets en la nube por: S/ ${monto_total}`);
 
     if (!detalles || detalles.length === 0) {
         return res.status(400).json({ error: "El carrito de compras está vacío" });
@@ -333,7 +358,6 @@ app.post('/api/ventas', (req, res) => {
 
     detalles.forEach(item => {
         const queryDescontarStock = 'UPDATE productos SET cantidad = cantidad - ? WHERE id = ?';
-        
         const idProducto = Number(item.producto_id);
         const cantidadRestar = parseInt(item.cantidad);
 
@@ -345,16 +369,95 @@ app.post('/api/ventas', (req, res) => {
                 huboError = true;
             }
 
+            // Cuando se termina de descontar todo el stock del carrito
             if (consultasCompletadas === detalles.length) {
                 if (huboError) {
                     return res.status(500).json({ error: "La venta se procesó con errores en algunos artículos" });
                 }
-                console.log("✅ ¡Venta múltiple registrada y stocks descontados en Clever Cloud!");
-                res.status(201).json({ status: "success", message: "🎉 ¡Venta procesada con éxito!" });
+
+                // 📄 1. CREAR EL DISEÑO DEL PDF
+                const idBoletaUnico = Date.now(); // Usamos la fecha en milisegundos para que sea un número único
+                const nombreArchivo = `boleta_${idBoletaUnico}.pdf`;
+                const rutaArchivo = path.join(dirBoletas, nombreArchivo);
+                
+                const doc = new PDFDocument({ size: 'A4', margin: 40 });
+                const writeStream = fs.createWriteStream(rutaArchivo);
+                doc.pipe(writeStream);
+
+                // --- DISEÑO ELEGANTE ---
+                doc.fillColor('#C41E3A').rect(40, 40, 515, 60).fill(); // Cuadro Rojo
+                doc.fillColor('#FFFFFF').fontSize(20).text('AGROPETS STORE', 55, 52, { bold: true });
+                doc.fontSize(10).text('Tu Pyme de confianza en Alimentos y Línea Agrícola', 55, 76);
+                
+                doc.fillColor('#000000').fontSize(12).text(`BOLETA DE VENTA`, 400, 52, { align: 'right' });
+                doc.fontSize(11).text(`N° B-${idBoletaUnico.toString().slice(-6)}`, 400, 68, { align: 'right', color: '#D2143A' });
+
+                doc.fillColor('#000000').fontSize(10);
+                doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 40, 120);
+                doc.text(`Método de Pago:  ${metodo_pago || 'Efectivo'}`, 40, 135);
+                doc.text(`Cliente:         ${cliente_nombre || 'Cliente General'}`, 40, 150);
+                doc.text(`Teléfono:        ${cliente_telefono || '-'}`, 40, 165);
+
+                doc.moveTo(40, 190).lineTo(555, 190).stroke('#CCCCCC');
+
+                let yTabla = 210;
+                doc.font('Helvetica-Bold').fillColor('#333333');
+                doc.text('Descripción del Producto', 40, yTabla);
+                doc.text('Cant.', 360, yTabla, { width: 40, align: 'center' });
+                doc.text('P. Unit', 420, yTabla, { width: 50, align: 'right' });
+                doc.text('Importe', 490, yTabla, { width: 65, align: 'right' });
+                
+                doc.moveTo(40, 225).lineTo(555, 225).stroke('#777777');
+                doc.font('Helvetica').fillColor('#000000');
+
+                yTabla = 235;
+                detalles.forEach(prod => {
+                    doc.text(prod.nombre || `Producto ID: ${prod.producto_id}`, 40, yTabla, { width: 300 });
+                    doc.text(`${prod.cantidad}`, 360, yTabla, { width: 40, align: 'center' });
+                    
+                    const pUnit = prod.precio_venta || (monto_total / prod.cantidad);
+                    const subTotal = pUnit * prod.cantidad;
+
+                    doc.text(`S/ ${pUnit.toFixed(2)}`, 420, yTabla, { width: 50, align: 'right' });
+                    doc.text(`S/ ${subTotal.toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+                    
+                    yTabla += 20;
+                });
+
+                doc.moveTo(40, yTabla + 5).lineTo(555, yTabla + 5).stroke('#CCCCCC');
+
+                yTabla += 20;
+                doc.font('Helvetica-Bold').fontSize(12);
+                doc.text('TOTAL A PAGAR:', 340, yTabla);
+                doc.text(`S/ ${parseFloat(monto_total).toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+
+                doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666666');
+                doc.text('Gracias por su preferencia. Vuelva pronto.', 40, yTabla + 40, { align: 'center' });
+
+                doc.end(); 
+
+                // 📄 2. ENVIAR RESPUESTA CON EL LINK CUANDO EL PDF ESTÉ LISTO
+                writeStream.on('finish', () => {
+                    const urlDominio = req.get('host').includes('localhost') 
+                        ? `http://${req.get('host')}` 
+                        : `https://agropets-stockpyme.onrender.com`;
+
+                    const pdfPublicUrl = `${urlDominio}/boletas/${nombreArchivo}`;
+                    
+                    console.log(`✅ ¡Venta registrada y PDF creado! Link: ${pdfPublicUrl}`);
+                    
+                    res.status(201).json({ 
+                        status: "success", 
+                        message: "🎉 ¡Venta procesada con éxito!",
+                        pdf_url: pdfPublicUrl 
+                    });
+                });
             }
         });
     });
 });
+
+
 // =========================================================================
 // 🚀 INYECTOR MASIVO TOTALMENTE CÓDIGOS DE BARRA (RESUELVE NOMBRES Y COLUMNAS)
 // =========================================================================
