@@ -30,7 +30,43 @@ db.connect(err => {
     }
     console.log('✅ Conectado exitosamente a MySQL en Clever Cloud');
 });
+// =========================================================================
+// 🚚 NUEVO ENDPOINT: PROCESAR COMPRAS A PROVEEDORES (ENTRADA DE STOCK)
+// =========================================================================
+app.post('/api/compras-proveedor', (req, res) => {
+    const { proveedor, detalles } = req.body;
+    
+    console.log(`🚚 Recibiendo entrada de stock del proveedor: ${proveedor || 'Genérico'}`);
 
+    if (!detalles || detalles.length === 0) {
+        return res.status(400).json({ error: "No hay productos en la lista de compra" });
+    }
+
+    let consultasCompletadas = 0;
+    let huboError = false;
+
+    detalles.forEach(item => {
+        // 🌟 CLAVE: Aquí SUMAMOS al stock actual porque es una ENTRADA
+        const querySumarStock = 'UPDATE productos SET cantidad = cantidad + ? WHERE id = ?';
+        
+        db.query(querySumarStock, [parseInt(item.cantidad), item.producto_id], (err, result) => {
+            consultasCompletadas++;
+
+            if (err) {
+                console.error(`❌ Error sumando stock para ID ${item.producto_id}:`, err.message);
+                huboError = true;
+            }
+
+            if (consultasCompletadas === detalles.length) {
+                if (huboError) {
+                    return res.status(500).json({ error: "La compra se procesó con errores en algunos artículos" });
+                }
+                console.log("✅ ¡Entrada de stock registrada exitosamente en Clever Cloud!");
+                res.status(201).json({ status: "success", message: "🎉 ¡Stock reabastecido con éxito!" });
+            }
+        });
+    });
+});
 // =========================================================================
 // 🔐 ENDPOINT: Inicio de sesión dinámico desde Base de Datos (Con Roles)
 // =========================================================================
