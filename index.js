@@ -313,8 +313,8 @@ app.get('/api/resumen', (req, res) => {
     });
 });
 
-// =========================================================================
-// 🛒 PROCESAR COMPRAS MÚLTIPLES (POST /api/ventas)
+/// =========================================================================
+// 🛒 ENDPOINT CORREGIDO: PROCESAR COMPRAS MÚLTIPLES (POST /api/ventas)
 // =========================================================================
 app.post('/api/ventas', (req, res) => {
     const { monto_total, detalles } = req.body;
@@ -331,7 +331,10 @@ app.post('/api/ventas', (req, res) => {
     detalles.forEach(item => {
         const queryDescontarStock = 'UPDATE productos SET cantidad = cantidad - ? WHERE id = ?';
         
-        db.query(queryDescontarStock, [parseInt(item.cantidad), item.producto_id], (err, result) => {
+        const idProducto = Number(item.producto_id);
+        const cantidadRestar = parseInt(item.cantidad);
+
+        db.query(queryDescontarStock, [cantidadRestar, idProducto], (err, result) => {
             consultasCompletadas++;
 
             if (err) {
@@ -349,7 +352,6 @@ app.post('/api/ventas', (req, res) => {
         });
     });
 });
-
 // =========================================================================
 // 🚀 INYECTOR MASIVO HÍBRIDO Y BLINDADO (RESUELVE NOMBRES Y COLUMNAS)
 // =========================================================================
