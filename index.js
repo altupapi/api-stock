@@ -68,33 +68,39 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ==========================================
-// 🧠 NUEVA RUTA: ANÁLISIS E INFORME IA PREDICTIVO
+// 🧠 NUEVA RUTA: ANÁLISIS E INFORME IA PREDICTIVO (CORREGIDA)
 // ==========================================
 app.get('/api/inteligencia', (req, res) => {
     
-    // 1. Consultamos los datos clave de tu inventario en Clever Cloud
-    // Vamos a traer los productos que tienen stock bajo (ej. menos de 5 unidades) y un resumen general
-    const sqlStockCritico = "SELECT nombre, stock, precio_venta FROM productos WHERE stock <= 5 ORDER BY stock ASC LIMIT 5";
-    const sqlResumenVentas = "SELECT SUM(total) as ventas_mes FROM ventas WHERE MONTH(fecha) = MONTH(CURRENT_DATE())";
-
+    // 1. Consultamos usando los nombres correctos de tus columnas: 'cantidad' y 'precio'
+    const sqlStockCritico = "SELECT nombre, cantidad, precio FROM productos WHERE cantidad <= 5 ORDER BY cantidad ASC LIMIT 5";
+    
     db.query(sqlStockCritico, (errCritico, productosCriticos) => {
         if (errCritico) {
-            console.error("Error base de datos IA:", errCritico);
-            return res.status(500).json({ mensaje: "Error al consultar inventario para la IA" });
+            console.error("❌ Error base de datos IA (Stock):", errCritico);
+            return res.status(500).json({ mensaje: "Error al consultar inventario para la IA", detalle: errCritico.message });
         }
 
-        db.query(sqlResumenVentas, (errVentas, resultadoVentas) => {
-            const ventasMes = resultadoVentas && resultadoVentas[0].ventas_mes ? resultadoVentas[0].ventas_mes : 0;
+        // 2. Usamos una consulta segura para calcular el valor total y simular las ventas del mes
+        const sqlResumenVentas = "SELECT CAST(IFNULL(SUM(cantidad * precio), 0) AS DECIMAL(10,2)) AS valor_inventario FROM productos";
 
-            // 2. Formateamos los datos en un texto limpio para que la IA los entienda perfectamente
-            let listaProductos = productosCriticos.map(p => `- ${p.nombre}: quedan ${p.stock} unidades`).join("\n");
+        db.query(sqlResumenVentas, (errVentas, resultadoVentas) => {
+            let ventasMes = 0;
+            if (!errVentas && resultadoVentas && resultadoVentas[0]) {
+                const valorInventario = parseFloat(resultadoVentas[0].valor_inventario) || 0;
+                // Usamos la misma fórmula matemática predictiva de tus reportes
+                ventasMes = parseFloat(((valorInventario * 0.12) * 24).toFixed(2));
+            }
+
+            // 3. Formateamos los datos usando '.cantidad'
+            let listaProductos = productosCriticos.map(p => `- ${p.nombre}: quedan ${p.cantidad} unidades`).join("\n");
             if (productosCriticos.length === 0) listaProductos = "- Todo el stock está estable por ahora.";
 
-            // 3. Redactamos las instrucciones secretas (Prompt) para el Agente de IA
+            // 4. Redactamos las instrucciones para el Agente de IA
             const promptContexto = `
                 Eres el asesor financiero e inteligente de la veterinaria y tienda de mascotas "Agropets StockPyme".
                 Analiza los siguientes datos reales del negocio actual:
-                - Ventas totales de este mes: S/ ${ventasMes}
+                - Ventas totales estimadas de este mes: S/ ${ventasMes}
                 - Productos en desabastecimiento o stock crítico (menos de 5 unidades):
                 ${listaProductos}
 
@@ -104,15 +110,14 @@ app.get('/api/inteligencia', (req, res) => {
                 Sé breve, usa emojis amigables y no uses asteriscos ni formatos raros de Markdown pesados.
             `;
 
-            // 4. Le pedimos a Gemini que procese los datos y genere las respuestas
+            // 5. Le pedimos a Gemini que procese los datos usando la variable global genAI
             async function generarInforme() {
                 try {
-                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // El modelo más rápido y optimizado
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                     const response = await model.generateContent(promptContexto);
                     const textoIA = response.text;
 
-                    // 5. Inventamos unos datos numéricos para tu gráfico de líneas en Android (Simulación de predicción)
-                    // En el futuro esto puede salir de una fórmula matemática de tus ventas pasadas
+                    // Datos numéricos simulados para tu gráfico de líneas en Android
                     const datosGraficoPrediccion = [
                         Math.round(ventasMes * 0.8), 
                         Math.round(ventasMes * 0.9), 
@@ -128,7 +133,7 @@ app.get('/api/inteligencia', (req, res) => {
                     });
 
                 } catch (errorIA) {
-                    console.error("Error al conectar con Gemini API:", errorIA);
+                    console.error("❌ Error al conectar con Gemini API:", errorIA);
                     res.status(500).json({ mensaje: "El agente de IA está indispuesto en este momento." });
                 }
             }
