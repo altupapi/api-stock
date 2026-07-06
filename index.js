@@ -67,9 +67,9 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Inicializamos la IA correctamente con el método oficial
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ==========================================
-// 🧠 NUEVA RUTA: ANÁLISIS E INFORME IA PREDICTIVO (CORREGIDA)
-// ==========================================
+// =========================================================================
+// 🧠 RUTA ULTRA-CORREGIDA: ANÁLISIS E INFORME IA PREDICTIVO
+// =========================================================================
 app.get('/api/inteligencia', (req, res) => {
     
     // 1. Consultamos usando los nombres correctos de tus columnas: 'cantidad' y 'precio'
@@ -110,12 +110,19 @@ app.get('/api/inteligencia', (req, res) => {
                 Sé breve, usa emojis amigables y no uses asteriscos ni formatos raros de Markdown pesados.
             `;
 
-            // 5. Le pedimos a Gemini que procese los datos usando la variable global genAI
+            // 5. Función asíncrona interna corregida con el estándar oficial del SDK
             async function generarInforme() {
                 try {
-                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                    const response = await model.generateContent(promptContexto);
-                    const textoIA = response.text;
+                    // Jalamas el modelo correcto compatible
+                    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                    
+                    // LLAMADA CORREGIDA: Se pasa el objeto estructurado en lugar del string crudo
+                    const response = await model.generateContent({
+                        contents: [{ role: 'user', parts: [{ text: promptContexto }] }]
+                    });
+                    
+                    // Extraemos el texto usando la propiedad estándar
+                    const textoIA = response.response.text();
 
                     // Datos numéricos simulados para tu gráfico de líneas en Android
                     const datosGraficoPrediccion = [
@@ -127,14 +134,17 @@ app.get('/api/inteligencia', (req, res) => {
                     ];
 
                     // Enviamos la respuesta final impecable hacia Android
-                    res.json({
+                    return res.json({
                         recomendaciones: textoIA,
                         prediccionesGrafico: datosGraficoPrediccion
                     });
 
                 } catch (errorIA) {
-                    console.error("❌ Error al conectar con Gemini API:", errorIA);
-                    res.status(500).json({ mensaje: "El agente de IA está indispuesto en este momento." });
+                    console.error("❌ Error al conectar con Gemini API:", errorIA.message);
+                    return res.status(500).json({ 
+                        mensaje: "El agente de IA está indispuesto en este momento.",
+                        detalle: errorIA.message 
+                    });
                 }
             }
 
