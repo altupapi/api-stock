@@ -201,12 +201,14 @@ app.post('/api/usuarios', (req, res) => {
 // 📥 Recibir y registrar producto desde la App Móvil (POST)
 app.post('/api/productos', (req, res) => {
     console.log("📥 Datos recibidos desde Android:", req.body);
-    const { nombre, cantidad, precio, categoria } = req.body; 
+    const { id, nombre, cantidad, precio, categoria } = req.body; 
 
-    const categoriaFinal = categoria || 'General';
-
-    const query = 'INSERT INTO productos (nombre, cantidad, precio, categoria) VALUES (?, ?, ?, ?)';
-    db.query(query, [nombre, parseInt(cantidad), parseFloat(precio), categoriaFinal], (err, result) => {
+    const categoriaFinal = category || 'General';
+    
+    // ✅ Agregamos 'id' a la consulta para guardar el código de barras directamente como ID
+    const query = 'INSERT INTO productos (id, nombre, cantidad, stock, precio, precio_venta, categoria) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    
+    db.query(query, [Number(id), nombre, parseInt(cantidad), parseInt(cantidad), parseFloat(precio), parseFloat(precio), categoriaFinal], (err, result) => {
         if (err) {
             console.error("❌ Error de MySQL:", err.message);
             return res.status(500).json({ error: err.message });
