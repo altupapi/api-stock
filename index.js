@@ -114,7 +114,7 @@ app.get('/api/inteligencia', (req, res) => {
             async function generarInforme() {
                 try {
                     // Jalamas el modelo correcto compatible
-                    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                     
                     // LLAMADA CORREGIDA: Se pasa el objeto estructurado en lugar del string crudo
                     const response = await model.generateContent({
