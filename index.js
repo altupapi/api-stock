@@ -3,13 +3,38 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
 
+// 1. Configuración de CORS
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// 🌟 2. TRUCO CRÍTICO: Habilitar los lectores de JSON ARRIBA de las rutas
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 🔌 3. Configuración de conexión con Clever Cloud
+const db = mysql.createConnection({
+    host: 'bmnj8uvb8uf33uyafbjm-mysql.services.clever-cloud.com', 
+    user: 'ugqnvchebaoj1muj',      
+    password: 'S5LZpQzSFbKJE2e9MvP6', 
+    database: 'bmnj8uvb8uf33uyafbjm',  
+    port: 3306
+});
+
+db.connect(err => {
+    if (err) {
+        console.error('❌ Error conectando a la base de datos:', err);
+        return;
+    }
+    console.log('✅ Conectado exitosamente a MySQL en Clever Cloud');
+});
+
+// =========================================================================
+// 🔐 ENDPOINT: Inicio de sesión dinámico desde Base de Datos (Con Roles)
+// =========================================================================
 app.post('/api/login', (req, res) => {
-    // Agregamos un log para ver en los servidores de Render qué está enviando Android
     console.log("Datos recibidos en Login:", req.body);
     
     const { usuario, password } = req.body;
@@ -18,12 +43,10 @@ app.post('/api/login', (req, res) => {
         return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
-    // Usamos 'usuarios' todo en minúsculas tal como se creó en phpMyAdmin
     const query = 'SELECT id, usuario, rol FROM usuarios WHERE usuario = ? AND password = ?';
 
     db.query(query, [usuario, password], (err, result) => {
         if (err) {
-            // 🚨 ESTO ES CLAVE: Si hay un error de MySQL, se imprimirá en los logs de Render
             console.error("ERROR CRÍTICO EN MYSQL:", err);
             return res.status(500).json({ error: "Error interno del servidor en la consulta SQL", detalle: err.message });
         }
@@ -39,49 +62,10 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
-app.use(express.json());
 
-// 🔌 Configuración con tus credenciales reales de Clever Cloud
-const db = mysql.createConnection({
-    host: 'bmnj8uvb8uf33uyafbjm-mysql.services.clever-cloud.com', 
-    user: 'ugqnvchebaoj1muj',      
-    password: 'S5LZpQzSFbKJE2e9MvP6', 
-    database: 'bmnj8uvb8uf33uyafbjm',  
-    port: 3306
-});
-// 🔄 ENDPOINT: Actualizar un producto existente por su ID
-app.put('/api/productos/:id', (req, res) => {
-    const { id } = req.params;
-    const { nombre, precio, cantidad, categoria } = req.body;
-
-    // Validación básica
-    if (!nombre || precio == null || cantidad == null || !categoria) {
-        return res.status(400).json({ error: "Todos los campos son obligatorios" });
-    }
-
-    const query = 'UPDATE productos SET nombre = ?, precio = ?, cantidad = ?, categoria = ? WHERE id = ?';
-    
-    db.query(query, [nombre, precio, cantidad, categoria, id], (err, result) => {
-        if (err) {
-            console.error("❌ Error al actualizar producto:", err.message);
-            return res.status(500).json({ error: err.message });
-        }
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "Producto no encontrado" });
-        }
-
-        console.log(`📝 Producto ID ${id} actualizado correctamente.`);
-        res.json({ message: "¡Producto actualizado con éxito!" });
-    });
-});
-db.connect(err => {
-    if (err) {
-        console.error('❌ Error conectando a la base de datos:', err);
-        return;
-    }
-    console.log('✅ Conectado exitosamente a MySQL en Clever Cloud');
-});
+// =========================================================================
+// 📦 ENDPOINTS: Gestión de Productos de Agropets
+// =========================================================================
 
 // 📥 Recibir y registrar producto desde la App Móvil (POST)
 app.post('/api/productos', (req, res) => {
@@ -101,10 +85,8 @@ app.post('/api/productos', (req, res) => {
     });
 });
 
-
-// 📤 1. Consultar productos filtrados u ordenados por categoría para el catálogo
+// 📤 Consultar productos filtrados u ordenados por categoría para el catálogo
 app.get('/api/productos', (req, res) => {
-    // Si la app móvil envía un parámetro de filtro opcional (ej. /api/productos?categoria=Aves)
     const categoriaFiltro = req.query.categoria;
 
     if (categoriaFiltro) {
@@ -114,7 +96,6 @@ app.get('/api/productos', (req, res) => {
             res.json(results);
         });
     } else {
-        // Consulta por defecto: agrupa todo limpiamente por categoría y orden alfabético
         db.query('SELECT * FROM productos ORDER BY categoria ASC, nombre ASC', (err, results) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(results);
@@ -122,8 +103,32 @@ app.get('/api/productos', (req, res) => {
     }
 });
 
-// 🏷️ 2. NUEVO ENDPOINT: Obtener la lista única de categorías activas de Agropets
-// Esto servirá para que Android genere dinámicamente los botones/pestañas de la app sin escribir nombres estáticos
+// 🔄 Actualizar un producto existente por su ID (PUT)
+app.put('/api/productos/:id', (req, res) => {
+    const idProducto = req.params.id;
+    const { nombre, cantidad, precio, categoria } = req.body; 
+
+    console.log(`🔄 Petición de actualización para el ID: ${idProducto}`, req.body);
+
+    const query = 'UPDATE productos SET nombre = ?, cantidad = ?, precio = ?, categoria = ? WHERE id = ?';
+    const categoriaFinal = categoria || 'General';
+
+    db.query(query, [nombre, parseInt(cantidad), parseFloat(precio), categoriaFinal, idProducto], (err, result) => {
+        if (err) {
+            console.error("❌ Error de MySQL al actualizar:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Producto no encontrado" });
+        }
+        
+        console.log(`✅ ¡Producto con ID ${idProducto} modificado con éxito!`);
+        res.json({ status: "success", message: '📦 Stock actualizado correctamente' });
+    });
+});
+
+// 🏷️ Obtener la lista única de categorías activas de Agropets
 app.get('/api/categorias', (req, res) => {
     const queryCategorias = 'SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL ORDER BY categoria ASC';
     
@@ -133,7 +138,6 @@ app.get('/api/categorias', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
         
-        // Mapeamos los resultados para devolver un arreglo simple de strings: ["Agrícola - Aves", "Cerdos", ...]
         const categoriasLimpias = results.map(row => row.categoria);
         console.log("🏷️ Categorías enviadas a Android:", categoriasLimpias);
         res.json(categoriasLimpias);
@@ -178,29 +182,8 @@ app.get('/api/reportes/resumen', (req, res) => {
     });
 });
 
-// 🔄 Actualizar stock tras una venta manual (PUT)
-app.put('/api/productos/:id', (req, res) => {
-    const idProducto = req.params.id;
-    const { nombre, cantidad, precio, categoria } = req.body; 
-
-    console.log(`🔄 Petición de actualización para el ID: ${idProducto}`, req.body);
-
-    const query = 'UPDATE productos SET nombre = ?, cantidad = ?, precio = ?, categoria = ? WHERE id = ?';
-    const categoriaFinal = categoria || 'General';
-
-    db.query(query, [nombre, parseInt(cantidad), parseFloat(precio), categoriaFinal, idProducto], (err, result) => {
-        if (err) {
-            console.error("❌ Error de MySQL al actualizar:", err.message);
-            return res.status(500).json({ error: err.message });
-        }
-        
-        console.log(`✅ ¡Producto con ID ${idProducto} modificado con éxito!`);
-        res.json({ status: "success", message: '📦 Stock actualizado correctamente' });
-    });
-});
-
 // =========================================================================
-// 🛒 NUEVA RUTA INTEGRADA: PROCESAR COMPRAS MÚLTIPLES (POST /api/ventas)
+// 🛒 PROCESAR COMPRAS MÚLTIPLES (POST /api/ventas)
 // =========================================================================
 app.post('/api/ventas', (req, res) => {
     const { monto_total, detalles } = req.body;
@@ -211,12 +194,10 @@ app.post('/api/ventas', (req, res) => {
         return res.status(400).json({ error: "El carrito de compras está vacío" });
     }
 
-    // Usamos un contador para saber cuándo terminamos de actualizar todos los productos en el ciclo
     let consultasCompletadas = 0;
     let huboError = false;
 
     detalles.forEach(item => {
-        // Consulta SQL para descontar la cantidad comprada directamente en Clever Cloud usando el id
         const queryDescontarStock = 'UPDATE productos SET cantidad = cantidad - ? WHERE id = ?';
         
         db.query(queryDescontarStock, [parseInt(item.cantidad), item.producto_id], (err, result) => {
@@ -227,7 +208,6 @@ app.post('/api/ventas', (req, res) => {
                 huboError = true;
             }
 
-            // Una vez que se procesaron todos los artículos del carrito mandamos la respuesta
             if (consultasCompletadas === detalles.length) {
                 if (huboError) {
                     return res.status(500).json({ error: "La venta se procesó con errores en algunos artículos" });
@@ -238,13 +218,12 @@ app.post('/api/ventas', (req, res) => {
         });
     });
 });
-// =========================================================================
+
 // =========================================================================
 // 🚀 INYECTOR MASIVO COMPLETO PARA AGROPETS (75 PRODUCTOS UNIFICADOS)
 // =========================================================================
 app.get('/api/admin/cargar-agropets', (req, res) => {
     const listaAgropets = [
-        // --- 🐶 LÍNEA CANINA SECOS (RICOCAN, SUPERCAN, YANGO, BANDIDO, THOR) ---
         ["Ricocan 7+ Años Adulto Raza Med/Gde x15kg", 12, 105.00, "Perros - Secos"],
         ["Ricocan Cordero y Cereales Adulto Raza Med/Gde x22kg", 2, 150.70, "Perros - Secos"],
         ["Ricocan Cordero y Cereales Adulto Raza Pequeña x15kg", 8, 105.00, "Perros - Secos"],
@@ -260,8 +239,6 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
         ["Bandido Extruido Adulto Carne x18kg", 11, 73.50, "Perros - Secos"],
         ["Thor Carne, Hígado y Cereales Adultos x25kg", 5, 107.50, "Perros - Secos"],
         ["Thor Carne Cachorros x25kg", 6, 112.50, "Perros - Secos"],
-        
-        // --- 🐶 LÍNEA CANINA NUEVOS (MIMASKOT, NUTRICAN, ZEUS) ---
         ["Mimaskot Carne, Cereales y Vegetales x15kg", 8, 93.00, "Perros - Secos"],
         ["Mimaskot Adulto Carne, Pollo y Cereales Raza Peq x15kg", 4, 93.00, "Perros - Secos"],
         ["Mimaskot Adulto Carne, Pollo y Cereales Raza Peq x25kg", 2, 145.00, "Perros - Secos"],
@@ -273,8 +250,6 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
         ["Nutrican Adulto Perros x25kg", 5, 108.00, "Perros - Secos"],
         ["Zeus Adulto Perros x25kg", 7, 90.00, "Perros - Secos"],
         ["Zeus Cachorro Perros x25kg", 4, 93.00, "Perros - Secos"],
-
-        // --- 🐱 LÍNEA FELINA SECOS Y ARENAS (RICOCAT, SUPERCAT, MICHICAT, MAXICAT, MIMASKOT) ---
         ["Ricocat Festival de Sabores Adulto x15kg", 8, 133.00, "Gatos - Secos"],
         ["Ricocat Pollo, Sardina y Salmón Adulto x09kg", 2, 81.00, "Gatos - Secos"],
         ["Ricocat Carne, Salmón y Leche Adulto x09kg", 12, 81.00, "Gatos - Secos"],
@@ -293,8 +268,6 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
         ["Arena Sanitaria Mimaskot para Gatos x5kg", 25, 13.00, "Gatos - Arena"],
         ["Arena Sanitaria Mimaskot para Gatos x10kg", 18, 23.00, "Gatos - Arena"],
         ["Arena Sanitaria Mimaskot para Gatos x20kg", 1, 40.00, "Gatos - Arena"],
-
-        // --- 🥩 LÍNEA HÚMEDOS, HIGIENE Y SNACKS ---
         ["Caja Latas Ricocan Pate/Trocitos x24und (330gr)", 4, 102.00, "Húmedos"],
         ["Caja Latas Ricocat Húmedo Pate x24und (330gr)", 6, 115.00, "Húmedos"],
         ["Caja Pouches Ricocan Trocitos x15und (100gr)", 20, 25.00, "Húmedos"],
@@ -304,8 +277,6 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
         ["Shampoo Ricocan Frasco x380ml", 25, 12.00, "Higiene"],
         ["Shampoo Fresh Can Frasco x300ml", 30, 8.00, "Higiene"],
         ["Snack Ricocrack Caja x12und", 10, 72.00, "Snacks"],
-
-        // --- 🌾 LÍNEA AGRÍCOLA Y PECUARIA (CRIACENTRO AVES, CERDOS, PAVOS, GALLOS, ETC.) ---
         ["Super Plus Inicio Pellet 40kg (B001)", 15, 117.00, "Agrícola - Aves"],
         ["Super Plus Crecimiento Pellet 40kg (B002)", 2, 115.00, "Agrícola - Aves"],
         ["Super Plus Engorde Pellet 40kg (B003)", 8, 110.00, "Agrícola - Aves"],
@@ -367,6 +338,7 @@ app.get('/api/admin/cargar-agropets', (req, res) => {
         res.send(`<h1>🎉 ¡Catálogo INTEGRAL de Agropets cargado con éxito en Clever Cloud!</h1><p>Se registraron exitosamente los <b>${result.affectedRows}</b> productos combinados.</p>`);
     });
 });
+
 // =========================================================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
