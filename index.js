@@ -341,11 +341,9 @@ app.get('/api/resumen', (req, res) => {
 });
 
 // =========================================================================
-// 🛒 ENDPOINT ACTUALIZADO: PROCESAR COMPRAS Y GENERAR BOLETA PDF
+// 🛒 ENDPOINT ACTUALIZADO: PROCESAR COMPRAS, GUARDAR HISTORIAL Y GENERAR PDF
 // =========================================================================
 app.post('/api/ventas', (req, res) => {
-
-    
     // 📥 Atrapamos también los datos del cliente que Android ahora envía
     const { monto_total, detalles, cliente_nombre, cliente_telefono, metodo_pago } = req.body;
     
@@ -359,11 +357,11 @@ app.post('/api/ventas', (req, res) => {
     let huboError = false;
 
     detalles.forEach(item => {
-        const queryDescontarStock = 'UPDATE productos SET cantidad = cantidad - ? WHERE id = ?';
+        const queryDescontarStock = 'UPDATE productos SET cantidad = cantidad - ?, stock = stock - ? WHERE id = ?';
         const idProducto = Number(item.producto_id);
         const cantidadRestar = parseInt(item.cantidad);
 
-        db.query(queryDescontarStock, [cantidadRestar, idProducto], (err, result) => {
+        db.query(queryDescontarStock, [cantidadRestar, cantidadRestar, idProducto], (err, result) => {
             consultasCompletadas++;
 
             if (err) {
@@ -377,6 +375,8 @@ app.post('/api/ventas', (req, res) => {
                 if (huboError) {
                     return res.status(500).json({ error: "La venta se procesó con errores en algunos artículos" });
                 }
+
+                // 💰 ¡AQUÍ ESTÁ LA MAGIA! GUARDAMOS LA VENTA EN EL HISTORIAL REAL
                 const queryGuardarVenta = 'INSERT INTO historial_ventas (monto_total, metodo_pago) VALUES (?, ?)';
                 db.query(queryGuardarVenta, [monto_total, metodo_pago || 'Efectivo'], (errHistorial) => {
                     if (errHistorial) {
@@ -384,83 +384,69 @@ app.post('/api/ventas', (req, res) => {
                     } else {
                          console.log("✅ Venta registrada en el historial monetario.");
                     }
-                // 📄 1. CREAR EL DISEÑO DEL PDF
-                const idBoletaUnico = Date.now(); // Usamos la fecha en milisegundos para que sea un número único
-                const nombreArchivo = `boleta_${idBoletaUnico}.pdf`;
-                const rutaArchivo = path.join(dirBoletas, nombreArchivo);
-                
-                const doc = new PDFDocument({ size: 'A4', margin: 40 });
-                const writeStream = fs.createWriteStream(rutaArchivo);
-                doc.pipe(writeStream);
 
-                // --- DISEÑO ELEGANTE ---
-                doc.fillColor('#C41E3A').rect(40, 40, 515, 60).fill(); // Cuadro Rojo
-                doc.fillColor('#FFFFFF').fontSize(20).text('AGROPETS STORE', 55, 52, { bold: true });
-                doc.fontSize(10).text('Tu Pyme de confianza en Alimentos y Línea Agrícola', 55, 76);
-                
-                doc.fillColor('#000000').fontSize(12).text(`BOLETA DE VENTA`, 400, 52, { align: 'right' });
-                doc.fontSize(11).text(`N° B-${idBoletaUnico.toString().slice(-6)}`, 400, 68, { align: 'right', color: '#D2143A' });
-
-                doc.fillColor('#000000').fontSize(10);
-                doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 40, 120);
-                doc.text(`Método de Pago:  ${metodo_pago || 'Efectivo'}`, 40, 135);
-                doc.text(`Cliente:         ${cliente_nombre || 'Cliente General'}`, 40, 150);
-                doc.text(`Teléfono:        ${cliente_telefono || '-'}`, 40, 165);
-
-                doc.moveTo(40, 190).lineTo(555, 190).stroke('#CCCCCC');
-
-                let yTabla = 210;
-                doc.font('Helvetica-Bold').fillColor('#333333');
-                doc.text('Descripción del Producto', 40, yTabla);
-                doc.text('Cant.', 360, yTabla, { width: 40, align: 'center' });
-                doc.text('P. Unit', 420, yTabla, { width: 50, align: 'right' });
-                doc.text('Importe', 490, yTabla, { width: 65, align: 'right' });
-                
-                doc.moveTo(40, 225).lineTo(555, 225).stroke('#777777');
-                doc.font('Helvetica').fillColor('#000000');
-
-                yTabla = 235;
-                detalles.forEach(prod => {
-                    doc.text(prod.nombre || `Producto ID: ${prod.producto_id}`, 40, yTabla, { width: 300 });
-                    doc.text(`${prod.cantidad}`, 360, yTabla, { width: 40, align: 'center' });
+                    // 📄 A PARTIR DE AQUÍ GENERAMOS EL PDF COMO SIEMPRE
+                    const idBoletaUnico = Date.now(); 
+                    const nombreArchivo = `boleta_${idBoletaUnico}.pdf`;
+                    const rutaArchivo = path.join(dirBoletas, nombreArchivo);
                     
-                    const pUnit = prod.precio_venta || (monto_total / prod.cantidad);
-                    const subTotal = pUnit * prod.cantidad;
+                    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+                    const writeStream = fs.createWriteStream(rutaArchivo);
+                    doc.pipe(writeStream);
 
-                    doc.text(`S/ ${pUnit.toFixed(2)}`, 420, yTabla, { width: 50, align: 'right' });
-                    doc.text(`S/ ${subTotal.toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+                    doc.fillColor('#C41E3A').rect(40, 40, 515, 60).fill(); 
+                    doc.fillColor('#FFFFFF').fontSize(20).text('AGROPETS STORE', 55, 52, { bold: true });
+                    doc.fontSize(10).text('Tu Pyme de confianza en Alimentos y Línea Agrícola', 55, 76);
                     
-                    yTabla += 20;
-                });
+                    doc.fillColor('#000000').fontSize(12).text(`BOLETA DE VENTA`, 400, 52, { align: 'right' });
+                    doc.fontSize(11).text(`N° B-${idBoletaUnico.toString().slice(-6)}`, 400, 68, { align: 'right', color: '#D2143A' });
 
-                doc.moveTo(40, yTabla + 5).lineTo(555, yTabla + 5).stroke('#CCCCCC');
+                    doc.fillColor('#000000').fontSize(10);
+                    doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 40, 120);
+                    doc.text(`Método de Pago:  ${metodo_pago || 'Efectivo'}`, 40, 135);
+                    doc.text(`Cliente:         ${cliente_nombre || 'Cliente General'}`, 40, 150);
+                    doc.text(`Teléfono:        ${cliente_telefono || '-'}`, 40, 165);
 
-                yTabla += 20;
-                doc.font('Helvetica-Bold').fontSize(12);
-                doc.text('TOTAL A PAGAR:', 340, yTabla);
-                doc.text(`S/ ${parseFloat(monto_total).toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+                    doc.moveTo(40, 190).lineTo(555, 190).stroke('#CCCCCC');
 
-                doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666666');
-                doc.text('Gracias por su preferencia. Vuelva pronto.', 40, yTabla + 40, { align: 'center' });
-
-                doc.end(); 
-
-                // 📄 2. ENVIAR RESPUESTA CON EL LINK CUANDO EL PDF ESTÉ LISTO
-                writeStream.on('finish', () => {
-                    const urlDominio = req.get('host').includes('localhost') 
-                        ? `http://${req.get('host')}` 
-                        : `https://agropets-stockpyme.onrender.com`;
-
-                    const pdfPublicUrl = `${urlDominio}/boletas/${nombreArchivo}`;
+                    let yTabla = 210;
+                    doc.font('Helvetica-Bold').fillColor('#333333');
+                    doc.text('Descripción', 40, yTabla);
+                    doc.text('Cant.', 360, yTabla, { width: 40, align: 'center' });
+                    doc.text('P. Unit', 420, yTabla, { width: 50, align: 'right' });
+                    doc.text('Importe', 490, yTabla, { width: 65, align: 'right' });
                     
-                    console.log(`✅ ¡Venta registrada y PDF creado! Link: ${pdfPublicUrl}`);
-                    
-                    res.status(201).json({ 
-                        status: "success", 
-                        message: "🎉 ¡Venta procesada con éxito!",
-                        pdf_url: pdfPublicUrl 
+                    doc.moveTo(40, 225).lineTo(555, 225).stroke('#777777');
+                    doc.font('Helvetica').fillColor('#000000');
+
+                    yTabla = 235;
+                    detalles.forEach(prod => {
+                        doc.text(prod.nombre || `Producto ID: ${prod.producto_id}`, 40, yTabla, { width: 300 });
+                        doc.text(`${prod.cantidad}`, 360, yTabla, { width: 40, align: 'center' });
+                        const pUnit = prod.precio_venta || (monto_total / prod.cantidad);
+                        doc.text(`S/ ${pUnit.toFixed(2)}`, 420, yTabla, { width: 50, align: 'right' });
+                        doc.text(`S/ ${(pUnit * prod.cantidad).toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+                        yTabla += 20;
                     });
-                });
+
+                    doc.moveTo(40, yTabla + 5).lineTo(555, yTabla + 5).stroke('#CCCCCC');
+                    yTabla += 20;
+                    doc.font('Helvetica-Bold').fontSize(12);
+                    doc.text('TOTAL A PAGAR:', 340, yTabla);
+                    doc.text(`S/ ${parseFloat(monto_total).toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+
+                    doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666666');
+                    doc.text('Gracias por su preferencia. Vuelva pronto.', 40, yTabla + 40, { align: 'center' });
+
+                    doc.end(); 
+
+                    writeStream.on('finish', () => {
+                        const urlDominio = req.get('host').includes('localhost') ? `http://${req.get('host')}` : `https://agropets-stockpyme.onrender.com`;
+                        res.status(201).json({ 
+                            status: "success", message: "🎉 ¡Venta procesada con éxito!", pdf_url: `${urlDominio}/boletas/${nombreArchivo}`
+                        });
+                    });
+                }); // <-- Fin del db.query de historial
             }
         });
     });
