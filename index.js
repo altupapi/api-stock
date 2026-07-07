@@ -150,7 +150,7 @@ app.get('/api/inteligencia', (req, res) => {
             }
 
           const valorInventario = parseFloat(resultadoVentas[0].valor_inventario) || 0;
-          const ventasMes = parseFloat(((valorInventario * 0.042) * 24).toFixed(2));
+          const ventasMes = parseFloat(((valorInventario * 0.005) * 24).toFixed(2));
 
             // 3. 📝 LÓGICA DE TEXTO AUTOMÁTICO (Reemplaza a la IA)
             let textoRecomendaciones = "";
@@ -323,7 +323,7 @@ const valorInventarioReal = parseFloat(datosBase.valorInventario) || 0;
 const totalProductosReal = parseInt(datosBase.totalProductos) || 0;
 const stockBajoReal = parseInt(datosBase.stockBajo) || 0;
 
-const ventasDiariasCalculadas = valorInventarioReal > 0 ? (valorInventarioReal * 0.042) : 0;
+const ventasDiariasCalculadas = valorInventarioReal > 0 ? (valorInventarioReal * 0.005) : 0;
 const gananciasMensualesCalculadas = ventasDiariasCalculadas * 24;
 
 const reporteFinanciero = {
