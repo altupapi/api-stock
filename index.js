@@ -149,9 +149,8 @@ app.get('/api/inteligencia', (req, res) => {
                 return res.status(500).json({ mensaje: "Error al calcular ventas", detalle: errVentas.message });
             }
 
-        
-           // 🟢 NUEVA FÓRMULA: Ajustada al 1.2% diario proyectado a 30 días
-            const ventasMes = parseFloat(((valorInventario * 0.012) * 30).toFixed(2));
+          const valorInventario = parseFloat(resultadoVentas[0].valor_inventario) || 0;
+           const ventasMes = parseFloat(((valorInventario * 0.01) * 30).toFixed(2));
 
             // 3. 📝 LÓGICA DE TEXTO AUTOMÁTICO (Reemplaza a la IA)
             let textoRecomendaciones = "";
@@ -172,7 +171,7 @@ app.get('/api/inteligencia', (req, res) => {
                 Math.round(ventasMes * 0.65), // Hace 1 semana
                 Math.round(ventasMes * 0.85), // Días recientes
                 Math.round(ventasMes),        // HOY
-                Math.round(ventasMes * 1.15), // Proyección futuro cercano (+15%)
+                Math.round(ventasMes * 1.15), // Proyección futuro cercano (+15%)   
                 Math.round(ventasMes * 1.3)   // Proyección meta final (+30%)
             ];
 
