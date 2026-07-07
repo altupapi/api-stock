@@ -149,9 +149,9 @@ app.get('/api/inteligencia', (req, res) => {
                 return res.status(500).json({ mensaje: "Error al calcular ventas", detalle: errVentas.message });
             }
 
-            const valorInventario = parseFloat(resultadoVentas[0].valor_inventario) || 0;
-            // Tu misma fórmula financiera predictiva
-            const ventasMes = parseFloat(((valorInventario * 0.12) * 24).toFixed(2));
+        
+           // 🟢 NUEVA FÓRMULA: Ajustada al 1.2% diario proyectado a 30 días
+            const ventasMes = parseFloat(((valorInventario * 0.012) * 30).toFixed(2));
 
             // 3. 📝 LÓGICA DE TEXTO AUTOMÁTICO (Reemplaza a la IA)
             let textoRecomendaciones = "";
@@ -301,7 +301,7 @@ app.get('/api/categorias', (req, res) => {
     });
 });
 
-// 📊 ENDPOINT DE REPORTES BLINDADO CONTRA VALORES NULOS
+// 📊 ENDPOINT DE REPORTES BLINDADO Y DINÁMICO
 app.get('/api/resumen', (req, res) => {
     const query = `
         SELECT 
@@ -317,27 +317,28 @@ app.get('/api/resumen', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
 
-        const datosBase = results[0];
-        
-        const valorInventarioReal = parseFloat(datosBase.valorInventario) || 0;
-        const totalProductosReal = parseInt(datosBase.totalProductos) || 0;
-        const stockBajoReal = parseInt(datosBase.stockBajo) || 0;
+        // Cambia este bloque dentro de app.get('/api/resumen')
+const datosBase = results[0];
 
-        const ventasDiariasCalculadas = valorInventarioReal > 0 ? (valorInventarioReal * 0.12) : 0;
-        const gananciasMensualesCalculadas = ventasDiariasCalculadas * 24;
+const valorInventarioReal = parseFloat(datosBase.valorInventario) || 0;
+const totalProductosReal = parseInt(datosBase.totalProductos) || 0;
+const stockBajoReal = parseInt(datosBase.stockBajo) || 0;
 
-        const reporteFinanciero = {
-            valorInventario: valorInventarioReal,
-            totalProductos: totalProductosReal,
-            stockBajo: stockBajoReal,
-            ventasHoy: parseFloat(ventasDiariasCalculadas.toFixed(2)),
-            gananciasMes: parseFloat(gananciasMensualesCalculadas.toFixed(2))
-        };
+// 🟢 NUEVA FÓRMULA REALISTA: 1.2% de rotación diaria estimada del inventario
+const ventasDiariasCalculadas = valorInventarioReal > 0 ? (valorInventarioReal * 0.012) : 0; 
+const gananciasMensualesCalculadas = ventasDiariasCalculadas * 30; // Proyección a un mes real de 30 días
+
+const reporteFinanciero = {
+    valorInventario: valorInventarioReal,
+    totalProductos: totalProductosReal,
+    stockBajo: stockBajoReal,
+    ventasHoy: parseFloat(ventasDiariasCalculadas.toFixed(2)),       // Dará aprox S/ 1,180.00
+    gananciasMes: parseFloat(gananciasMensualesCalculadas.toFixed(2)) // Dará aprox S/ 35,400.00
+};
 
         console.log("📈 Analíticas despachadas a Android con éxito:", reporteFinanciero);
         res.json(reporteFinanciero);
     });
-    
 });
 
 // =========================================================================
