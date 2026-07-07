@@ -344,6 +344,8 @@ app.get('/api/resumen', (req, res) => {
 // 🛒 ENDPOINT ACTUALIZADO: PROCESAR COMPRAS Y GENERAR BOLETA PDF
 // =========================================================================
 app.post('/api/ventas', (req, res) => {
+
+    
     // 📥 Atrapamos también los datos del cliente que Android ahora envía
     const { monto_total, detalles, cliente_nombre, cliente_telefono, metodo_pago } = req.body;
     
@@ -371,10 +373,17 @@ app.post('/api/ventas', (req, res) => {
 
             // Cuando se termina de descontar todo el stock del carrito
             if (consultasCompletadas === detalles.length) {
+                
                 if (huboError) {
                     return res.status(500).json({ error: "La venta se procesó con errores en algunos artículos" });
                 }
-
+                const queryGuardarVenta = 'INSERT INTO historial_ventas (monto_total, metodo_pago) VALUES (?, ?)';
+                db.query(queryGuardarVenta, [monto_total, metodo_pago || 'Efectivo'], (errHistorial) => {
+                    if (errHistorial) {
+                         console.error("❌ Error guardando el historial de la venta:", errHistorial);
+                    } else {
+                         console.log("✅ Venta registrada en el historial monetario.");
+                    }
                 // 📄 1. CREAR EL DISEÑO DEL PDF
                 const idBoletaUnico = Date.now(); // Usamos la fecha en milisegundos para que sea un número único
                 const nombreArchivo = `boleta_${idBoletaUnico}.pdf`;
@@ -456,7 +465,56 @@ app.post('/api/ventas', (req, res) => {
         });
     });
 });
+// =========================================================================
+// 📊 ENDPOINT: ESTADÍSTICAS REALES DE VENTAS (DÍAS, MESES Y AÑOS)
+// =========================================================================
+app.get('/api/estadisticas-ventas', (req, res) => {
+    
+    // 1. Consulta: Ventas de Hoy (Monto exacto del día en curso)
+    const sqlHoy = "SELECT IFNULL(SUM(monto_total), 0) AS total_hoy FROM historial_ventas WHERE DATE(fecha) = CURDATE()";
+    
+    // 2. Consulta: Ventas de este mes agrupadas por DÍA DE LA SEMANA (Lunes, Martes...)
+    // Usamos DAYNAME y DAYOFWEEK para ordenar lógicamente
+    const sqlDiasSemana = `
+        SELECT 
+            DAYNAME(fecha) AS dia_semana, 
+            SUM(monto_total) AS total 
+        FROM historial_ventas 
+        WHERE MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE())
+        GROUP BY DAYOFWEEK(fecha), DAYNAME(fecha)
+        ORDER BY DAYOFWEEK(fecha);
+    `;
 
+    // 3. Consulta: Ventas de este año agrupadas por MESES (Enero, Febrero...)
+    const sqlMesesAnio = `
+        SELECT 
+            MONTHNAME(fecha) AS mes, 
+            SUM(monto_total) AS total 
+        FROM historial_ventas 
+        WHERE YEAR(fecha) = YEAR(CURDATE())
+        GROUP BY MONTH(fecha), MONTHNAME(fecha)
+        ORDER BY MONTH(fecha);
+    `;
+
+    // Ejecutamos las consultas en cadena
+    db.query(sqlHoy, (errHoy, resHoy) => {
+        if (errHoy) return res.status(500).json({ error: "Error calculando hoy" });
+
+        db.query(sqlDiasSemana, (errDias, resDias) => {
+            if (errDias) return res.status(500).json({ error: "Error calculando días" });
+
+            db.query(sqlMesesAnio, (errMeses, resMeses) => {
+                if (errMeses) return res.status(500).json({ error: "Error calculando meses" });
+
+                res.json({
+                    ventas_hoy_real: parseFloat(resHoy[0].total_hoy),
+                    ventas_por_dias_semana: resDias, // Retorna array: [{dia_semana: 'Monday', total: 150.50}, ...]
+                    ventas_por_meses: resMeses       // Retorna array: [{mes: 'July', total: 4500.00}, ...]
+                });
+            });
+        });
+    });
+});
 
 // =========================================================================
 // 🚀 INYECTOR MASIVO TOTALMENTE CÓDIGOS DE BARRA (RESUELVE NOMBRES Y COLUMNAS)
