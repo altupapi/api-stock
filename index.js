@@ -439,12 +439,16 @@ app.post('/api/ventas', (req, res) => {
 
                     doc.end(); 
 
-                    writeStream.on('finish', () => {
-                        const urlDominio = req.get('host').includes('localhost') ? `http://${req.get('host')}` : `https://agropets-stockpyme.onrender.com`;
-                        res.status(201).json({ 
-                            status: "success", message: "🎉 ¡Venta procesada con éxito!", pdf_url: `${urlDominio}/boletas/${nombreArchivo}`
+                        writeStream.on('finish', () => {
+                            const urlDominio = req.get('host').includes('localhost') ? `http://${req.get('host')}` : `https://agropets-stockpyme.onrender.com`;
+                            const linkBoleta = `${urlDominio}/boletas/${nombreArchivo}`;
+                            console.log(`🔗 Link del PDF generado: ${linkBoleta}`);
+                            res.status(201).json({ 
+                                status: "success", 
+                                message: "🎉 ¡Venta procesada con éxito!", 
+                                pdf_url: `${urlDominio}/boletas/${nombreArchivo}`
+                            });
                         });
-                    });
                 }); // <-- Fin del db.query de historial
             }
         });
