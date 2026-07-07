@@ -2,13 +2,13 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
-require('dotenv').config();
+
 
 // 📄 Herramientas para la Boleta PDF
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 
 // 1. Configuración de CORS
 app.use(cors({
@@ -51,65 +51,6 @@ db.connect(err => {
     console.log('✅ Conectado exitosamente a MySQL en Clever Cloud');
 });
 
-
-
-// Ahora lee la llave de forma secreta, sin mostrarla en el código
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// 3. La ruta que tu Android va a llamar
-app.get('/api/inteligencia', async (req, res) => {
-    try {
-        /* =======================================================
-           A. LEER DATOS REALES (Ajusta esto a tu conexión de BD)
-           ======================================================= */
-       // ✅ CÓDIGO CORREGIDO (La solución mágica)
-        const [productosCriticos] = await db.promise().query("SELECT nombre FROM productos WHERE stock <= 5 LIMIT 5");
-        const [ventasResult] = await db.promise().query("SELECT SUM(total) as totalMes FROM ventas WHERE MONTH(fecha) = MONTH(CURDATE())");
-
-        // Convertimos los datos para que la IA los entienda
-        const nombresCriticos = productosCriticos.map(p => p.nombre).join(", ");
-        const totalMes = ventasResult[0].totalMes || 0;
-
-        /* =======================================================
-           B. CONFIGURAR EL CEREBRO DE LA IA
-           ======================================================= */
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-        // EL PROMPT: Las instrucciones secretas que le damos al agente
-        const prompt = `
-        Eres el gerente de analítica de 'Agropets', una tienda de mascotas.
-        Datos actuales de la base de datos:
-        - Ventas acumuladas este mes: S/ ${totalMes}
-        - Productos en quiebre de stock: ${nombresCriticos || "Ninguno, todo está bien."}
-
-        Escribe un reporte MUY BREVE (máximo 3 líneas) dirigido al dueño.
-        Reglas:
-        1. Empieza siempre con el título: "💡 Reporte e Interpretación Automatizada"
-        2. Da 2 recomendaciones urgentes sobre reabastecer esos productos específicos para no perder ventas.
-        3. Menciona el monto de ventas del mes para motivar.
-        4. Sé profesional, directo y no uses negritas (**) en el texto.
-        `;
-
-        /* =======================================================
-           C. GENERAR Y RESPONDER A ANDROID
-           ======================================================= */
-        const result = await model.generateContent(prompt);
-        const recomendacionIA = result.response.text();
-
-        res.json({
-            recomendaciones: recomendacionIA,
-            // Proyección realista para los próximos 5 días en la gráfica
-            prediccionesGrafico: [180.50, 195.00, 210.00, 205.50, 245.00] 
-        });
-
-    } catch (error) {
-        console.error("Error en el Agente IA:", error);
-        res.status(500).json({ 
-            recomendaciones: "Error conectando con el servidor de IA.",
-            prediccionesGrafico: [0, 0, 0, 0, 0]
-        });
-    }
-});
 // =========================================================================
 // 🚚 ENDPOINT CORREGIDO: PROCESAR COMPRAS A PROVEEDORES (ENTRADA DE STOCK)
 // =========================================================================
