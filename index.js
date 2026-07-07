@@ -461,14 +461,14 @@ app.get('/api/estadisticas-ventas', (req, res) => {
     
     // 2. Consulta: Ventas de este mes agrupadas por DÍA DE LA SEMANA (Lunes, Martes...)
     // Usamos DAYNAME y DAYOFWEEK para ordenar lógicamente
-    const sqlDiasSemana = `
+   const sqlDiasSemana = `
         SELECT 
             DAYNAME(fecha) AS dia_semana, 
             SUM(monto_total) AS total 
         FROM historial_ventas 
-        WHERE MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE())
-        GROUP BY DAYOFWEEK(fecha), DAYNAME(fecha)
-        ORDER BY DAYOFWEEK(fecha);
+        WHERE YEARWEEK(fecha, 1) = YEARWEEK(CURDATE(), 1)
+        GROUP BY WEEKDAY(fecha), DAYNAME(fecha)
+        ORDER BY WEEKDAY(fecha);
     `;
 
     // 3. Consulta: Ventas de este año agrupadas por MESES (Enero, Febrero...)
