@@ -62,9 +62,9 @@ app.get('/api/inteligencia', async (req, res) => {
         /* =======================================================
            A. LEER DATOS REALES (Ajusta esto a tu conexión de BD)
            ======================================================= */
-        // Ejemplo asumiendo que usas mysql2 con promesas
-        const [productosCriticos] = await db.query("SELECT nombre FROM productos WHERE stock <= 5 LIMIT 5");
-        const [ventasResult] = await db.query("SELECT SUM(total) as totalMes FROM ventas WHERE MONTH(fecha) = MONTH(CURDATE())");
+       // ✅ CÓDIGO CORREGIDO (La solución mágica)
+        const [productosCriticos] = await db.promise().query("SELECT nombre FROM productos WHERE stock <= 5 LIMIT 5");
+        const [ventasResult] = await db.promise().query("SELECT SUM(total) as totalMes FROM ventas WHERE MONTH(fecha) = MONTH(CURDATE())");
 
         // Convertimos los datos para que la IA los entienda
         const nombresCriticos = productosCriticos.map(p => p.nombre).join(", ");
