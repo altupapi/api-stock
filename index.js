@@ -375,7 +375,7 @@ app.post('/api/ventas', (req, res) => {
                     return res.status(500).json({ error: "La venta se procesó con errores en algunos artículos" });
                 }
 
-                // 💰 ¡AQUÍ ESTÁ LA MAGIA! GUARDAMOS LA VENTA EN EL HISTORIAL REAL
+                // 💰 GUARDAMOS LA VENTA EN EL HISTORIAL REAL
                 const queryGuardarVenta = 'INSERT INTO historial_ventas (monto_total, metodo_pago) VALUES (?, ?)';
                 db.query(queryGuardarVenta, [monto_total, metodo_pago || 'Efectivo'], (errHistorial) => {
                     if (errHistorial) {
@@ -400,8 +400,19 @@ app.post('/api/ventas', (req, res) => {
                     doc.fillColor('#000000').fontSize(12).text(`BOLETA DE VENTA`, 400, 52, { align: 'right' });
                     doc.fontSize(11).text(`N° B-${idBoletaUnico.toString().slice(-6)}`, 400, 68, { align: 'right', color: '#D2143A' });
 
+                    // =========================================================================
+                    // 🌎 SOLUCIÓN AL VIAJE EN EL TIEMPO (FECHA LOCAL DE PERÚ)
+                    // =========================================================================
+                    const fechaPeru = new Date().toLocaleDateString("es-PE", {
+                        timeZone: "America/Lima",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric"
+                    });
+                    // =========================================================================
+
                     doc.fillColor('#000000').fontSize(10);
-                    doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 40, 120);
+                    doc.text(`Fecha de Emisión: ${fechaPeru}`, 40, 120);
                     doc.text(`Método de Pago:  ${metodo_pago || 'Efectivo'}`, 40, 135);
                     doc.text(`Cliente:         ${cliente_nombre || 'Cliente General'}`, 40, 150);
                     doc.text(`Teléfono:        ${cliente_telefono || '-'}`, 40, 165);
@@ -423,8 +434,8 @@ app.post('/api/ventas', (req, res) => {
                         doc.text(prod.nombre || `Producto ID: ${prod.producto_id}`, 40, yTabla, { width: 300 });
                         doc.text(`${prod.cantidad}`, 360, yTabla, { width: 40, align: 'center' });
                         const pUnit = prod.precio_venta || (monto_total / prod.cantidad);
-                        doc.text(`S/ ${pUnit.toFixed(2)}`, 420, yTabla, { width: 50, align: 'right' });
-                        doc.text(`S/ ${(pUnit * prod.cantidad).toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+                        doc.text("S/ " + pUnit.toFixed(2), 420, yTabla, { width: 50, align: 'right' });
+                        doc.text("S/ " + (pUnit * prod.cantidad).toFixed(2), 490, yTabla, { width: 65, align: 'right' });
                         yTabla += 20;
                     });
 
@@ -432,23 +443,23 @@ app.post('/api/ventas', (req, res) => {
                     yTabla += 20;
                     doc.font('Helvetica-Bold').fontSize(12);
                     doc.text('TOTAL A PAGAR:', 340, yTabla);
-                    doc.text(`S/ ${parseFloat(monto_total).toFixed(2)}`, 490, yTabla, { width: 65, align: 'right' });
+                    doc.text("S/ " + parseFloat(monto_total).toFixed(2), 490, yTabla, { width: 65, align: 'right' });
 
                     doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666666');
                     doc.text('Gracias por su preferencia. Vuelva pronto.', 40, yTabla + 40, { align: 'center' });
 
                     doc.end(); 
 
-                        writeStream.on('finish', () => {
-                            const urlDominio = req.get('host').includes('localhost') ? `http://${req.get('host')}` : `https://agropets-stockpyme.onrender.com`;
-                            const linkBoleta = `${urlDominio}/boletas/${nombreArchivo}`;
-                            console.log(`🔗 Link del PDF generado: ${linkBoleta}`);
-                            res.status(201).json({ 
-                                status: "success", 
-                                message: "🎉 ¡Venta procesada con éxito!", 
-                                pdf_url: `${urlDominio}/boletas/${nombreArchivo}`
-                            });
+                    writeStream.on('finish', () => {
+                        const urlDominio = req.get('host').includes('localhost') ? `http://${req.get('host')}` : `https://agropets-stockpyme.onrender.com`;
+                        const linkBoleta = `${urlDominio}/boletas/${nombreArchivo}`;
+                        console.log(`🔗 Link del PDF generado: ${linkBoleta}`);
+                        res.status(201).json({ 
+                            status: "success", 
+                            message: "🎉 ¡Venta procesada con éxito!", 
+                            pdf_url: `${urlDominio}/boletas/${nombreArchivo}`
                         });
+                    });
                 }); // <-- Fin del db.query de historial
             }
         });
@@ -504,7 +515,7 @@ app.get('/api/estadisticas-ventas', (req, res) => {
             });
         });
     });
-});
+}); 
 
 // =========================================================================
 // 🚀 INYECTOR MASIVO TOTALMENTE CÓDIGOS DE BARRA (RESUELVE NOMBRES Y COLUMNAS)
