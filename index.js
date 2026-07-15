@@ -459,15 +459,16 @@ app.post('/api/ventas', (req, res) => {
 // =========================================================================
 app.get('/api/estadisticas-ventas', (req, res) => {
     
-    // 1. Consulta: Ventas de Hoy (Monto exacto del día en curso)
+    // 1. Consulta: Ventas de Hoy (Monto exacto del día en curso en Dinero)
     const sqlHoy = "SELECT IFNULL(SUM(monto_total), 0) AS total_hoy FROM historial_ventas WHERE DATE(fecha) = CURDATE()";
     
-    // 2. Consulta: Ventas de este mes agrupadas por DÍA DE LA SEMANA (Lunes, Martes...)
-    // Usamos DAYNAME y DAYOFWEEK para ordenar lógicamente
-   const sqlDiasSemana = `
+    // 2. Consulta: CANTIDAD de ventas de esta semana agrupadas por DÍA DE LA SEMANA
+    // 🔄 Cambiado SUM(monto_total) por COUNT(id) para contar operaciones en lugar de dinero.
+    // 🗓️ Se filtra por YEARWEEK para que se reinicie automáticamente cada lunes.
+    const sqlDiasSemana = `
         SELECT 
             DAYNAME(fecha) AS dia_semana, 
-            SUM(monto_total) AS total 
+            COUNT(id) AS total 
         FROM historial_ventas 
         WHERE YEARWEEK(fecha, 1) = YEARWEEK(CURDATE(), 1)
         GROUP BY WEEKDAY(fecha), DAYNAME(fecha)
@@ -497,7 +498,7 @@ app.get('/api/estadisticas-ventas', (req, res) => {
 
                 res.json({
                     ventas_hoy_real: parseFloat(resHoy[0].total_hoy),
-                    ventas_por_dias_semana: resDias, // Retorna array: [{dia_semana: 'Monday', total: 150.50}, ...]
+                    ventas_por_dias_semana: resDias, // Retorna array: [{dia_semana: 'Monday', total: 3}, ...] (Cantidad de ventas)
                     ventas_por_meses: resMeses       // Retorna array: [{mes: 'July', total: 4500.00}, ...]
                 });
             });
